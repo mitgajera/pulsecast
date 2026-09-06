@@ -1,3 +1,3 @@
 mod initialize;
 
-pub use initialize::initialize;
+pub use initialize::{initialize, InitializeArgs};

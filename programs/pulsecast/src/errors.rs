@@ -20,6 +20,12 @@ pub enum PulseCastError {
     InvalidPrice,
     #[msg("The supplied basis-point value is invalid")]
     InvalidBasisPoints,
+    #[msg("The entry amount must be greater than zero")]
+    InvalidEntryAmount,
+    #[msg("Only the canonical devnet USDC mint is supported")]
+    InvalidUsdcMint,
+    #[msg("The BTC/USD feed identifier cannot be empty")]
+    InvalidFeedId,
     #[msg("The market reached its participant limit")]
     MarketFull,
     #[msg("The prediction has already been scored")]
