@@ -1,4 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{Mint, Token, TokenAccount},
+};
 
 pub mod constants;
 pub mod errors;
@@ -20,6 +24,46 @@ pub mod pulsecast {
     pub fn create_market(ctx: Context<CreateMarket>, round_id: u64, open_at: i64) -> Result<()> {
         instructions::create_market(ctx, round_id, open_at)
     }
+
+    pub fn enter_market(ctx: Context<EnterMarket>) -> Result<()> {
+        instructions::enter_market(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct EnterMarket<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        init,
+        payer = user,
+        space = 8 + state::Prediction::INIT_SPACE,
+        seeds = [constants::PREDICTION_SEED, round.key().as_ref(), user.key().as_ref()],
+        bump
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    #[account(address = config.usdc_mint)]
+    pub usdc_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = user
+    )]
+    pub user_usdc: Account<'info, TokenAccount>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = config
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]

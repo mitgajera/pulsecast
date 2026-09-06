@@ -11,10 +11,10 @@ pub struct MarketCreated {
 }
 
 #[event]
-pub struct PredictionSubmitted {
+pub struct MarketEntered {
     pub round: Pubkey,
     pub user: Pubkey,
-    pub submitted_at: i64,
+    pub entry_amount: u64,
 }
 
 #[event]
