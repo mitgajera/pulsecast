@@ -1,0 +1,33 @@
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum PulseCastError {
+    #[msg("The market start timestamp must align to a minute boundary")]
+    MarketNotMinuteAligned,
+    #[msg("The market is not accepting bets")]
+    BettingClosed,
+    #[msg("The market has not reached its resolution timestamp")]
+    ResolutionTooEarly,
+    #[msg("The oracle account does not match the configured BTC/USD feed")]
+    InvalidOracleFeed,
+    #[msg("The oracle observation is stale")]
+    StaleOraclePrice,
+    #[msg("The oracle observation predates the market resolution boundary")]
+    OraclePriceBeforeResolution,
+    #[msg("The oracle confidence interval exceeds the configured limit")]
+    OracleConfidenceTooWide,
+    #[msg("The supplied price must be positive")]
+    InvalidPrice,
+    #[msg("The supplied basis-point value is invalid")]
+    InvalidBasisPoints,
+    #[msg("The market reached its participant limit")]
+    MarketFull,
+    #[msg("The prediction has already been scored")]
+    PredictionAlreadyScored,
+    #[msg("The market has already been settled")]
+    MarketAlreadySettled,
+    #[msg("Arithmetic overflow or underflow")]
+    ArithmeticOverflow,
+    #[msg("The caller is not authorized for this operation")]
+    Unauthorized,
+}

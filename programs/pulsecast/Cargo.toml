@@ -1,0 +1,31 @@
+[package]
+name = "pulsecast"
+version = "0.1.0"
+description = "Private minute-aligned BTC precision markets on MagicBlock"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "pulsecast"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+anchor-lang = { version = "=1.0.2", features = ["init-if-needed"] }
+anchor-spl = { version = "=1.0.2" }
+ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor", "access-control"] }
+pyth-solana-receiver-sdk = "=2.0.0"
+session-keys = { version = "=3.1.1", features = ["no-entrypoint"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
+
