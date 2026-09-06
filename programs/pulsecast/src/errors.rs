@@ -4,6 +4,12 @@ use anchor_lang::prelude::*;
 pub enum PulseCastError {
     #[msg("The market start timestamp must align to a minute boundary")]
     MarketNotMinuteAligned,
+    #[msg("The market must start in the future")]
+    MarketStartNotFuture,
+    #[msg("The market schedule exceeds the supported timestamp range")]
+    InvalidMarketSchedule,
+    #[msg("The protocol is paused")]
+    ProtocolPaused,
     #[msg("The market is not accepting bets")]
     BettingClosed,
     #[msg("The market has not reached its resolution timestamp")]
