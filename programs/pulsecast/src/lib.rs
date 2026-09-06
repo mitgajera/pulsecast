@@ -3,6 +3,7 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{Mint, Token, TokenAccount},
 };
+use ephemeral_rollups_sdk::anchor::delegate;
 
 pub mod constants;
 pub mod errors;
@@ -28,6 +29,30 @@ pub mod pulsecast {
     pub fn enter_market(ctx: Context<EnterMarket>) -> Result<()> {
         instructions::enter_market(ctx)
     }
+
+    pub fn delegate_prediction(ctx: Context<DelegatePrediction>) -> Result<()> {
+        instructions::delegate_prediction(ctx)
+    }
+}
+
+#[delegate]
+#[derive(Accounts)]
+pub struct DelegatePrediction<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        mut,
+        del,
+        seeds = [constants::PREDICTION_SEED, round.key().as_ref(), user.key().as_ref()],
+        bump = prediction.bump,
+        has_one = round,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    #[account(mut)]
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]

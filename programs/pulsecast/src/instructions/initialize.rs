@@ -10,6 +10,7 @@ use crate::{
 pub struct InitializeArgs {
     pub usdc_mint: Pubkey,
     pub btc_usd_feed_id: [u8; 32],
+    pub tee_validator: Pubkey,
     pub entry_amount: u64,
     pub fee_bps: u16,
     pub max_error_bps: u16,
@@ -22,6 +23,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
     config.authority = ctx.accounts.authority.key();
     config.usdc_mint = args.usdc_mint;
     config.btc_usd_feed_id = args.btc_usd_feed_id;
+    config.tee_validator = args.tee_validator;
     config.entry_amount = args.entry_amount;
     config.fee_bps = args.fee_bps;
     config.max_error_bps = args.max_error_bps;
@@ -50,6 +52,10 @@ fn validate_args(args: &InitializeArgs) -> Result<()> {
         args.btc_usd_feed_id != [0; 32],
         PulseCastError::InvalidFeedId
     );
+    require!(
+        args.tee_validator != Pubkey::default(),
+        PulseCastError::InvalidTeeValidator
+    );
     Ok(())
 }
 
@@ -61,6 +67,7 @@ mod tests {
         InitializeArgs {
             usdc_mint: DEVNET_USDC_MINT,
             btc_usd_feed_id: [1; 32],
+            tee_validator: Pubkey::new_unique(),
             entry_amount: 1_000_000,
             fee_bps: 300,
             max_error_bps: 50,
@@ -88,6 +95,10 @@ mod tests {
 
         args = valid_args();
         args.btc_usd_feed_id = [0; 32];
+        assert!(validate_args(&args).is_err());
+
+        args = valid_args();
+        args.tee_validator = Pubkey::default();
         assert!(validate_args(&args).is_err());
     }
 }

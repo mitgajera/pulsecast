@@ -32,6 +32,8 @@ pub enum PulseCastError {
     InvalidUsdcMint,
     #[msg("The BTC/USD feed identifier cannot be empty")]
     InvalidFeedId,
+    #[msg("The TEE validator cannot be the default public key")]
+    InvalidTeeValidator,
     #[msg("The market reached its participant limit")]
     MarketFull,
     #[msg("The prediction has already been scored")]
