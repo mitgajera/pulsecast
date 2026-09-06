@@ -1,0 +1,34 @@
+# Secrets and wallet material
+.env
+.env.*
+!.env.example
+*.json.keypair
+keypairs/
+
+# Anchor, Rust, Solana
+target/
+.anchor/
+test-ledger/
+.surfpool/
+*.so
+
+# JavaScript / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+
+# Local tooling
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Local planning and agent context
+*.md
+!/README.md
+.superstack/
+scripts/
