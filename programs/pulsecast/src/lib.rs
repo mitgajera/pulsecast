@@ -3,7 +3,7 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{Mint, Token, TokenAccount},
 };
-use ephemeral_rollups_sdk::anchor::delegate;
+use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
 
 pub mod constants;
 pub mod errors;
@@ -14,6 +14,7 @@ pub mod state;
 
 declare_id!("4UVCJQeggToFwbNx4QgbAvFe1cpQ3aUWRVkYV19VJUQu");
 
+#[ephemeral]
 #[program]
 pub mod pulsecast {
     use super::*;
@@ -33,6 +34,60 @@ pub mod pulsecast {
     pub fn delegate_prediction(ctx: Context<DelegatePrediction>) -> Result<()> {
         instructions::delegate_prediction(ctx)
     }
+
+    pub fn make_prediction_private(ctx: Context<MakePredictionPrivate>) -> Result<()> {
+        instructions::make_prediction_private(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct MakePredictionPrivate<'info> {
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            prediction.round.as_ref(),
+            user.key().as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    /// CHECK: Canonical permission PDA validated by seeds and permission program.
+    #[account(
+        mut,
+        seeds = [
+            ephemeral_rollups_sdk::access_control::structs::PERMISSION_SEED,
+            prediction.key().as_ref()
+        ],
+        bump,
+        seeds::program = permission_program.key()
+    )]
+    pub permission: UncheckedAccount<'info>,
+    /// CHECK: Address is constrained to the MagicBlock ephemeral vault.
+    #[account(
+        mut,
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::EPHEMERAL_VAULT_ID.to_bytes()
+        )
+    )]
+    pub ephemeral_vault: UncheckedAccount<'info>,
+    /// CHECK: Address is constrained to the MagicBlock program.
+    #[account(
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::MAGIC_PROGRAM_ID.to_bytes()
+        )
+    )]
+    pub magic_program: UncheckedAccount<'info>,
+    /// CHECK: Address is constrained to the MagicBlock permission program.
+    #[account(
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::PERMISSION_PROGRAM_ID.to_bytes()
+        )
+    )]
+    pub permission_program: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
 }
 
 #[delegate]
