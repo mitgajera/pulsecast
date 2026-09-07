@@ -38,6 +38,26 @@ pub mod pulsecast {
     pub fn make_prediction_private(ctx: Context<MakePredictionPrivate>) -> Result<()> {
         instructions::make_prediction_private(ctx)
     }
+
+    pub fn submit_prediction(ctx: Context<SubmitPrediction>, predicted_price: i64) -> Result<()> {
+        instructions::submit_prediction(ctx, predicted_price)
+    }
+}
+
+#[derive(Accounts)]
+pub struct SubmitPrediction<'info> {
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            prediction.round.as_ref(),
+            user.key().as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]
