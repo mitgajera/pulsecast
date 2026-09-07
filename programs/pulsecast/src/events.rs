@@ -54,3 +54,10 @@ pub struct MarketSettled {
     pub total_payout: u64,
     pub protocol_fee: u64,
 }
+
+#[event]
+pub struct PayoutClaimed {
+    pub round: Pubkey,
+    pub user: Pubkey,
+    pub amount: u64,
+}

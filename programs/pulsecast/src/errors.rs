@@ -56,6 +56,8 @@ pub enum PulseCastError {
     PredictionAlreadyScored,
     #[msg("The market has already been settled")]
     MarketAlreadySettled,
+    #[msg("The prediction payout has already been claimed")]
+    PayoutAlreadyClaimed,
     #[msg("The supplied prediction accounts do not match the market")]
     InvalidSettlementAccounts,
     #[msg("The recorded pool does not match funded entries")]

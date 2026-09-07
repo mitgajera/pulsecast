@@ -1,5 +1,6 @@
 mod authorize_prediction_session;
 mod capture_opening_price;
+mod claim_payout;
 mod create_market;
 mod delegate_prediction;
 mod enter_market;
@@ -14,6 +15,7 @@ mod submit_prediction;
 
 pub use authorize_prediction_session::authorize_prediction_session;
 pub use capture_opening_price::capture_opening_price;
+pub use claim_payout::claim_payout;
 pub use create_market::create_market;
 pub use delegate_prediction::delegate_prediction;
 pub use enter_market::enter_market;

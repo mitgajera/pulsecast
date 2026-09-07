@@ -76,6 +76,53 @@ pub mod pulsecast {
     pub fn settle_market(ctx: Context<SettleMarket>) -> Result<()> {
         instructions::settle_market(ctx)
     }
+
+    pub fn claim_payout(ctx: Context<ClaimPayout>) -> Result<()> {
+        instructions::claim_payout(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct ClaimPayout<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            round.key().as_ref(),
+            user.key().as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = round,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    #[account(address = config.usdc_mint)]
+    pub usdc_mint: Account<'info, Mint>,
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = config
+    )]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = user
+    )]
+    pub user_usdc: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
