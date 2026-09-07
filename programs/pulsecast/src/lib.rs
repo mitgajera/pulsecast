@@ -72,6 +72,20 @@ pub mod pulsecast {
     pub fn score_prediction(ctx: Context<ScorePrediction>) -> Result<()> {
         instructions::score_prediction(ctx)
     }
+
+    pub fn settle_market(ctx: Context<SettleMarket>) -> Result<()> {
+        instructions::settle_market(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct SettleMarket<'info> {
+    #[account(
+        mut,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
 }
 
 #[derive(Accounts)]

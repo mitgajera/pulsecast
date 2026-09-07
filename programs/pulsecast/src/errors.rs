@@ -56,6 +56,10 @@ pub enum PulseCastError {
     PredictionAlreadyScored,
     #[msg("The market has already been settled")]
     MarketAlreadySettled,
+    #[msg("The supplied prediction accounts do not match the market")]
+    InvalidSettlementAccounts,
+    #[msg("The recorded pool does not match funded entries")]
+    PoolMismatch,
     #[msg("Arithmetic overflow or underflow")]
     ArithmeticOverflow,
     #[msg("The caller is not authorized for this operation")]
