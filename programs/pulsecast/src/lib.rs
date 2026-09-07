@@ -3,7 +3,7 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token::{Mint, Token, TokenAccount},
 };
-use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
+use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
 use session_keys::{Session, SessionTokenV2};
 
 pub mod constants;
@@ -54,6 +54,28 @@ pub mod pulsecast {
     pub fn lock_market(ctx: Context<LockMarket>) -> Result<()> {
         instructions::lock_market(ctx)
     }
+
+    pub fn reveal_prediction(ctx: Context<RevealPrediction>) -> Result<()> {
+        instructions::reveal_prediction(ctx)
+    }
+}
+
+#[commit]
+#[derive(Accounts)]
+pub struct RevealPrediction<'info> {
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            prediction.round.as_ref(),
+            user.key().as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    #[account(mut)]
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]

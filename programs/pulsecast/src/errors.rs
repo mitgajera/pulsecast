@@ -18,6 +18,8 @@ pub enum PulseCastError {
     InvalidMarketStatus,
     #[msg("The market has not reached its resolution timestamp")]
     ResolutionTooEarly,
+    #[msg("A prediction must be submitted before it can be revealed")]
+    PredictionMissing,
     #[msg("The oracle account does not match the configured BTC/USD feed")]
     InvalidOracleFeed,
     #[msg("The oracle observation is stale")]

@@ -50,6 +50,7 @@ pub fn enter_market(ctx: Context<EnterMarket>) -> Result<()> {
     prediction.user = ctx.accounts.user.key();
     prediction.session_signer = Pubkey::default();
     prediction.lock_at = round.lock_at;
+    prediction.resolve_at = round.resolve_at;
     prediction.predicted_price = 0;
     prediction.submitted_at = 0;
     prediction.error = 0;

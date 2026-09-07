@@ -7,6 +7,7 @@ pub struct Prediction {
     pub user: Pubkey,
     pub session_signer: Pubkey,
     pub lock_at: i64,
+    pub resolve_at: i64,
     pub predicted_price: i64,
     pub submitted_at: i64,
     pub error: u64,
