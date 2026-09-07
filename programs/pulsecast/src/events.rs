@@ -11,6 +11,13 @@ pub struct MarketCreated {
 }
 
 #[event]
+pub struct OpeningPriceCaptured {
+    pub round: Pubkey,
+    pub price: i64,
+    pub oracle_publish_time: i64,
+}
+
+#[event]
 pub struct MarketEntered {
     pub round: Pubkey,
     pub user: Pubkey,

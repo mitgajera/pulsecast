@@ -10,6 +10,7 @@ use crate::{
 pub struct InitializeArgs {
     pub usdc_mint: Pubkey,
     pub btc_usd_feed_id: [u8; 32],
+    pub oracle_exponent: i32,
     pub tee_validator: Pubkey,
     pub entry_amount: u64,
     pub fee_bps: u16,
@@ -23,6 +24,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
     config.authority = ctx.accounts.authority.key();
     config.usdc_mint = args.usdc_mint;
     config.btc_usd_feed_id = args.btc_usd_feed_id;
+    config.oracle_exponent = args.oracle_exponent;
     config.tee_validator = args.tee_validator;
     config.entry_amount = args.entry_amount;
     config.fee_bps = args.fee_bps;
@@ -53,6 +55,10 @@ fn validate_args(args: &InitializeArgs) -> Result<()> {
         PulseCastError::InvalidFeedId
     );
     require!(
+        (-12..=0).contains(&args.oracle_exponent),
+        PulseCastError::InvalidOracleExponent
+    );
+    require!(
         args.tee_validator != Pubkey::default(),
         PulseCastError::InvalidTeeValidator
     );
@@ -67,6 +73,7 @@ mod tests {
         InitializeArgs {
             usdc_mint: DEVNET_USDC_MINT,
             btc_usd_feed_id: [1; 32],
+            oracle_exponent: -8,
             tee_validator: Pubkey::new_unique(),
             entry_amount: 1_000_000,
             fee_bps: 300,
@@ -99,6 +106,10 @@ mod tests {
 
         args = valid_args();
         args.tee_validator = Pubkey::default();
+        assert!(validate_args(&args).is_err());
+
+        args = valid_args();
+        args.oracle_exponent = 1;
         assert!(validate_args(&args).is_err());
     }
 }

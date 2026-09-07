@@ -4,6 +4,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use session_keys::{Session, SessionTokenV2};
 
 pub mod constants;
@@ -11,6 +12,7 @@ pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod math;
+pub mod oracle;
 pub mod state;
 
 declare_id!("4UVCJQeggToFwbNx4QgbAvFe1cpQ3aUWRVkYV19VJUQu");
@@ -58,6 +60,40 @@ pub mod pulsecast {
     pub fn reveal_prediction(ctx: Context<RevealPrediction>) -> Result<()> {
         instructions::reveal_prediction(ctx)
     }
+
+    pub fn capture_opening_price(ctx: Context<CaptureOpeningPrice>) -> Result<()> {
+        instructions::capture_opening_price(ctx)
+    }
+
+    pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
+        instructions::resolve_market(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct CaptureOpeningPrice<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(
+        mut,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
+    pub price_update: Account<'info, PriceUpdateV2>,
+}
+
+#[derive(Accounts)]
+pub struct ResolveMarket<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(
+        mut,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
+    pub price_update: Account<'info, PriceUpdateV2>,
 }
 
 #[commit]

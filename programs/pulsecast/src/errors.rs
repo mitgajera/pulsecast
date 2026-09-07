@@ -22,12 +22,20 @@ pub enum PulseCastError {
     PredictionMissing,
     #[msg("The oracle account does not match the configured BTC/USD feed")]
     InvalidOracleFeed,
+    #[msg("The oracle update is not fully verified")]
+    OracleNotFullyVerified,
     #[msg("The oracle observation is stale")]
     StaleOraclePrice,
     #[msg("The oracle observation predates the market resolution boundary")]
     OraclePriceBeforeResolution,
     #[msg("The oracle confidence interval exceeds the configured limit")]
     OracleConfidenceTooWide,
+    #[msg("The oracle exponent does not match the configured exponent")]
+    InvalidOracleExponent,
+    #[msg("The oracle observation is outside the permitted grace window")]
+    OraclePriceAfterGrace,
+    #[msg("The opening oracle price has already been captured")]
+    OpeningPriceAlreadyCaptured,
     #[msg("The supplied price must be positive")]
     InvalidPrice,
     #[msg("The supplied basis-point value is invalid")]
