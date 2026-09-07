@@ -68,6 +68,31 @@ pub mod pulsecast {
     pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
         instructions::resolve_market(ctx)
     }
+
+    pub fn score_prediction(ctx: Context<ScorePrediction>) -> Result<()> {
+        instructions::score_prediction(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct ScorePrediction<'info> {
+    #[account(
+        mut,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            round.key().as_ref(),
+            prediction.user.as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = round
+    )]
+    pub prediction: Account<'info, state::Prediction>,
 }
 
 #[derive(Accounts)]

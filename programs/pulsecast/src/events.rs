@@ -39,6 +39,15 @@ pub struct MarketResolved {
 }
 
 #[event]
+pub struct PredictionScored {
+    pub round: Pubkey,
+    pub prediction: Pubkey,
+    pub user: Pubkey,
+    pub error: u64,
+    pub score: u64,
+}
+
+#[event]
 pub struct MarketSettled {
     pub round: Pubkey,
     pub total_pool: u64,

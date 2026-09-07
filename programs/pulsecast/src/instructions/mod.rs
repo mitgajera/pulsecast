@@ -8,6 +8,7 @@ mod lock_market;
 mod make_prediction_private;
 mod resolve_market;
 mod reveal_prediction;
+mod score_prediction;
 mod submit_prediction;
 
 pub use authorize_prediction_session::authorize_prediction_session;
@@ -20,4 +21,5 @@ pub use lock_market::lock_market;
 pub use make_prediction_private::make_prediction_private;
 pub use resolve_market::resolve_market;
 pub use reveal_prediction::reveal_prediction;
+pub use score_prediction::score_prediction;
 pub use submit_prediction::submit_prediction;
