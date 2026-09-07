@@ -1,10 +1,20 @@
 use anchor_lang::prelude::*;
+use session_keys::{session_auth_or, SessionError};
 
 use crate::{errors::PulseCastError, SubmitPrediction};
 
+#[session_auth_or(
+    ctx.accounts.prediction.user == ctx.accounts.signer.key(),
+    SessionError::InvalidToken
+)]
 pub fn submit_prediction(ctx: Context<SubmitPrediction>, predicted_price: i64) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     validate_submission(ctx.accounts.prediction.lock_at, now, predicted_price)?;
+    require!(
+        ctx.accounts.signer.key() == ctx.accounts.prediction.user
+            || ctx.accounts.signer.key() == ctx.accounts.prediction.session_signer,
+        PulseCastError::InvalidSessionSigner
+    );
 
     let prediction = &mut ctx.accounts.prediction;
     prediction.predicted_price = predicted_price;

@@ -4,6 +4,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 use ephemeral_rollups_sdk::anchor::{delegate, ephemeral};
+use session_keys::{Session, SessionTokenV2};
 
 pub mod constants;
 pub mod errors;
@@ -101,20 +102,24 @@ pub struct AuthorizePredictionSession<'info> {
     pub user: Signer<'info>,
 }
 
-#[derive(Accounts)]
+#[derive(Accounts, Session)]
 pub struct SubmitPrediction<'info> {
     #[account(
         mut,
         seeds = [
             constants::PREDICTION_SEED,
             prediction.round.as_ref(),
-            user.key().as_ref()
+            prediction.user.as_ref()
         ],
-        bump = prediction.bump,
-        has_one = user
+        bump = prediction.bump
     )]
     pub prediction: Account<'info, state::Prediction>,
-    pub user: Signer<'info>,
+    #[session(
+        signer = signer,
+        authority = prediction.user.key()
+    )]
+    pub session_token: Option<Account<'info, SessionTokenV2>>,
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
