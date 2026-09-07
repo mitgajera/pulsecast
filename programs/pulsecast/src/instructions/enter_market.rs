@@ -21,7 +21,7 @@ pub fn enter_market(ctx: Context<EnterMarket>) -> Result<()> {
         PulseCastError::MarketFull
     );
 
-    let entry_amount = ctx.accounts.config.entry_amount;
+    let entry_amount = round.entry_amount;
     let next_pool = round
         .total_pool
         .checked_add(entry_amount)

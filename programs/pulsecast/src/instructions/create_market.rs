@@ -28,6 +28,7 @@ pub fn create_market(ctx: Context<CreateMarket>, round_id: u64, open_at: i64) ->
     round.protocol_fee = 0;
     round.prediction_count = 0;
     round.scored_count = 0;
+    round.entry_amount = ctx.accounts.config.entry_amount;
     round.fee_bps = ctx.accounts.config.fee_bps;
     round.max_error_bps = ctx.accounts.config.max_error_bps;
     round.bump = ctx.bumps.round;

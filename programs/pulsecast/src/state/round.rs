@@ -27,6 +27,7 @@ pub struct Round {
     pub protocol_fee: u64,
     pub prediction_count: u16,
     pub scored_count: u16,
+    pub entry_amount: u64,
     pub fee_bps: u16,
     pub max_error_bps: u16,
     pub bump: u8,
