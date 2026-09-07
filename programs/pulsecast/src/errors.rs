@@ -34,6 +34,8 @@ pub enum PulseCastError {
     InvalidFeedId,
     #[msg("The TEE validator cannot be the default public key")]
     InvalidTeeValidator,
+    #[msg("The session signer is invalid")]
+    InvalidSessionSigner,
     #[msg("The market reached its participant limit")]
     MarketFull,
     #[msg("The prediction has already been scored")]

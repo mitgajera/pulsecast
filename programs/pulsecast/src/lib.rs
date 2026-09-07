@@ -42,6 +42,63 @@ pub mod pulsecast {
     pub fn submit_prediction(ctx: Context<SubmitPrediction>, predicted_price: i64) -> Result<()> {
         instructions::submit_prediction(ctx, predicted_price)
     }
+
+    pub fn authorize_prediction_session(
+        ctx: Context<AuthorizePredictionSession>,
+        session_signer: Pubkey,
+    ) -> Result<()> {
+        instructions::authorize_prediction_session(ctx, session_signer)
+    }
+}
+
+#[derive(Accounts)]
+pub struct AuthorizePredictionSession<'info> {
+    #[account(
+        mut,
+        seeds = [
+            constants::PREDICTION_SEED,
+            prediction.round.as_ref(),
+            user.key().as_ref()
+        ],
+        bump = prediction.bump,
+        has_one = user
+    )]
+    pub prediction: Account<'info, state::Prediction>,
+    /// CHECK: Existing canonical permission PDA validated by seeds.
+    #[account(
+        mut,
+        seeds = [
+            ephemeral_rollups_sdk::access_control::structs::PERMISSION_SEED,
+            prediction.key().as_ref()
+        ],
+        bump,
+        seeds::program = permission_program.key()
+    )]
+    pub permission: UncheckedAccount<'info>,
+    /// CHECK: Address constrained to the MagicBlock ephemeral vault.
+    #[account(
+        mut,
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::EPHEMERAL_VAULT_ID.to_bytes()
+        )
+    )]
+    pub ephemeral_vault: UncheckedAccount<'info>,
+    /// CHECK: Address constrained to the MagicBlock program.
+    #[account(
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::MAGIC_PROGRAM_ID.to_bytes()
+        )
+    )]
+    pub magic_program: UncheckedAccount<'info>,
+    /// CHECK: Address constrained to the MagicBlock permission program.
+    #[account(
+        address = Pubkey::new_from_array(
+            ephemeral_rollups_sdk::consts::PERMISSION_PROGRAM_ID.to_bytes()
+        )
+    )]
+    pub permission_program: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub user: Signer<'info>,
 }
 
 #[derive(Accounts)]
