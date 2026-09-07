@@ -25,6 +25,7 @@ pub fn create_market(ctx: Context<CreateMarket>, round_id: u64, open_at: i64) ->
     round.actual_publish_time = 0;
     round.total_pool = 0;
     round.total_score = 0;
+    round.protocol_fee = 0;
     round.prediction_count = 0;
     round.scored_count = 0;
     round.fee_bps = ctx.accounts.config.fee_bps;

@@ -24,6 +24,7 @@ pub struct Round {
     pub actual_publish_time: i64,
     pub total_pool: u64,
     pub total_score: u64,
+    pub protocol_fee: u64,
     pub prediction_count: u16,
     pub scored_count: u16,
     pub fee_bps: u16,
