@@ -12,6 +12,10 @@ pub enum PulseCastError {
     ProtocolPaused,
     #[msg("The market is not accepting bets")]
     BettingClosed,
+    #[msg("The market has not reached its lock timestamp")]
+    LockTooEarly,
+    #[msg("The market state does not permit this transition")]
+    InvalidMarketStatus,
     #[msg("The market has not reached its resolution timestamp")]
     ResolutionTooEarly,
     #[msg("The oracle account does not match the configured BTC/USD feed")]

@@ -50,6 +50,20 @@ pub mod pulsecast {
     ) -> Result<()> {
         instructions::authorize_prediction_session(ctx, session_signer)
     }
+
+    pub fn lock_market(ctx: Context<LockMarket>) -> Result<()> {
+        instructions::lock_market(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct LockMarket<'info> {
+    #[account(
+        mut,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
 }
 
 #[derive(Accounts)]
