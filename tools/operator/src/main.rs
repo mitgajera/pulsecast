@@ -61,6 +61,16 @@ enum Command {
         #[arg(long)]
         open_at: Option<i64>,
     },
+    CreateMarketBatch {
+        #[arg(long)]
+        start_round_id: u64,
+        #[arg(long)]
+        start_at: Option<i64>,
+        #[arg(long, default_value_t = 3)]
+        count: u8,
+        #[arg(long, default_value_t = 60)]
+        interval_seconds: i64,
+    },
     DelegateSnapshot {
         #[arg(long)]
         round_id: u64,
@@ -232,6 +242,51 @@ fn main() -> Result<()> {
             println!(
                 "created round {round_id} at {round}\noracle snapshot {oracle_snapshot}\nopen_at {open_at}\nsignature {signature}"
             );
+        }
+        Command::CreateMarketBatch {
+            start_round_id,
+            start_at,
+            count,
+            interval_seconds,
+        } => {
+            if !(1..=3).contains(&count) {
+                bail!("count must be between 1 and 3");
+            }
+            if interval_seconds < 60 || interval_seconds.rem_euclid(60) != 0 {
+                bail!("interval_seconds must be a positive multiple of 60");
+            }
+            let start_at = start_at.unwrap_or_else(next_safe_minute);
+            if start_at.rem_euclid(60) != 0 {
+                bail!("start_at must be a minute boundary");
+            }
+            let config = config_address();
+            for offset in 0..u64::from(count) {
+                let round_id = start_round_id
+                    .checked_add(offset)
+                    .context("round id overflow")?;
+                let open_at = start_at
+                    .checked_add(
+                        interval_seconds
+                            .checked_mul(i64::try_from(offset)?)
+                            .context("market interval overflow")?,
+                    )
+                    .context("market timestamp overflow")?;
+                let (round, oracle_snapshot) = round_addresses(round_id);
+                let signature = program
+                    .request()
+                    .accounts(pulsecast::accounts::CreateMarket {
+                        config,
+                        round,
+                        oracle_snapshot,
+                        authority,
+                        system_program: system_program::ID,
+                    })
+                    .args(pulsecast::instruction::CreateMarket { round_id, open_at })
+                    .send()?;
+                println!(
+                    "created round {round_id} at {round}\noracle snapshot {oracle_snapshot}\nopen_at {open_at}\nsignature {signature}"
+                );
+            }
         }
         Command::DelegateSnapshot { round_id } => {
             let config = config_address();
