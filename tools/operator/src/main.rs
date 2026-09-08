@@ -27,6 +27,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    Addresses {
+        #[arg(long)]
+        round_id: Option<u64>,
+    },
+    ShowConfig,
     Initialize {
         #[arg(long, default_value_t = 1_000_000)]
         entry_amount: u64,
@@ -57,13 +62,43 @@ fn main() -> Result<()> {
     let program = client.program(pulsecast::ID)?;
 
     match cli.command {
+        Command::Addresses { round_id } => {
+            let config = config_address();
+            println!("program {}\nconfig {config}", pulsecast::ID);
+            if let Some(round_id) = round_id {
+                let (round, _) = Pubkey::find_program_address(
+                    &[pulsecast::constants::ROUND_SEED, &round_id.to_le_bytes()],
+                    &pulsecast::ID,
+                );
+                let (oracle_snapshot, _) = Pubkey::find_program_address(
+                    &[pulsecast::constants::ORACLE_SNAPSHOT_SEED, round.as_ref()],
+                    &pulsecast::ID,
+                );
+                println!("round {round}\noracle snapshot {oracle_snapshot}");
+            }
+        }
+        Command::ShowConfig => {
+            let config = config_address();
+            let state: pulsecast::state::GlobalConfig = program
+                .account(config)
+                .with_context(|| format!("config {config} is not initialized"))?;
+            println!(
+                "config {config}\nauthority {}\nusdc mint {}\nentry amount {}\nfee bps {}\nmax error bps {}\ntee validator {}\npaused {}",
+                state.authority,
+                state.usdc_mint,
+                state.entry_amount,
+                state.fee_bps,
+                state.max_error_bps,
+                state.tee_validator,
+                state.paused
+            );
+        }
         Command::Initialize {
             entry_amount,
             fee_bps,
             max_error_bps,
         } => {
-            let (config, _) =
-                Pubkey::find_program_address(&[pulsecast::constants::CONFIG_SEED], &pulsecast::ID);
+            let config = config_address();
             let args = pulsecast::instructions::InitializeArgs {
                 usdc_mint: pulsecast::constants::DEVNET_USDC_MINT,
                 btc_usd_feed_id: Pubkey::from_str(MAGICBLOCK_BTC_FEED)?.to_bytes(),
@@ -89,8 +124,7 @@ fn main() -> Result<()> {
             if open_at.rem_euclid(60) != 0 {
                 bail!("open_at must be a minute boundary");
             }
-            let (config, _) =
-                Pubkey::find_program_address(&[pulsecast::constants::CONFIG_SEED], &pulsecast::ID);
+            let config = config_address();
             let (round, _) = Pubkey::find_program_address(
                 &[pulsecast::constants::ROUND_SEED, &round_id.to_le_bytes()],
                 &pulsecast::ID,
@@ -116,6 +150,10 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn config_address() -> Pubkey {
+    Pubkey::find_program_address(&[pulsecast::constants::CONFIG_SEED], &pulsecast::ID).0
 }
 
 fn next_safe_minute() -> i64 {
