@@ -124,6 +124,49 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     svm.set_sysvar(&clock);
     svm.expire_blockhash();
 
+    let attacker = Keypair::new();
+    let unauthorized_pause = pause_instruction(program_id, config, attacker.pubkey(), true);
+    assert!(!send_user_transaction(
+        &mut svm,
+        unauthorized_pause,
+        &authority,
+        &attacker,
+    ));
+    assert!(!config_state(&svm, config).paused);
+
+    svm.expire_blockhash();
+    let pause = pause_instruction(program_id, config, authority.pubkey(), true);
+    assert!(send_authority_transaction(&mut svm, pause, &authority));
+    assert!(config_state(&svm, config).paused);
+
+    svm.expire_blockhash();
+    let paused_entry = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        prediction,
+        mint,
+        user_usdc,
+        vault,
+        user.pubkey(),
+        authority.pubkey(),
+    );
+    assert!(!send_user_transaction(
+        &mut svm,
+        paused_entry,
+        &authority,
+        &user,
+    ));
+    assert_eq!(token_balance(&svm, user_usdc), user_starting_usdc);
+    assert!(svm.get_account(&prediction).is_none());
+
+    svm.expire_blockhash();
+    let unpause = pause_instruction(program_id, config, authority.pubkey(), false);
+    assert!(send_authority_transaction(&mut svm, unpause, &authority));
+    assert!(!config_state(&svm, config).paused);
+
+    svm.expire_blockhash();
+
     let wrong_vault_instruction = enter_market_instruction(
         program_id,
         config,
@@ -439,4 +482,40 @@ fn send_user_transaction(
     let transaction =
         VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[sponsor, user]).unwrap();
     svm.send_transaction(transaction).is_ok()
+}
+
+fn send_authority_transaction(
+    svm: &mut LiteSVM,
+    instruction: Instruction,
+    authority: &Keypair,
+) -> bool {
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[authority]).unwrap();
+    svm.send_transaction(transaction).is_ok()
+}
+
+fn pause_instruction(
+    program_id: Pubkey,
+    config: Pubkey,
+    authority: Pubkey,
+    paused: bool,
+) -> Instruction {
+    let data = if paused {
+        pulsecast::instruction::PauseProtocol {}.data()
+    } else {
+        pulsecast::instruction::UnpauseProtocol {}.data()
+    };
+    Instruction::new_with_bytes(
+        program_id,
+        &data,
+        pulsecast::accounts::SetProtocolPause { config, authority }.to_account_metas(None),
+    )
+}
+
+fn config_state(svm: &LiteSVM, address: Pubkey) -> pulsecast::state::GlobalConfig {
+    let account = svm.get_account(&address).unwrap();
+    pulsecast::state::GlobalConfig::try_deserialize(&mut account.data.as_slice()).unwrap()
 }
