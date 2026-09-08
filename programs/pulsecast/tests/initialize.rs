@@ -128,12 +128,18 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
         &program_id,
     )
     .0;
+    let oracle_snapshot = Pubkey::find_program_address(
+        &[pulsecast::constants::ORACLE_SNAPSHOT_SEED, round.as_ref()],
+        &program_id,
+    )
+    .0;
     let instruction = Instruction::new_with_bytes(
         program_id,
         &pulsecast::instruction::CreateMarket { round_id, open_at }.data(),
         pulsecast::accounts::CreateMarket {
             config,
             round,
+            oracle_snapshot,
             authority: authority.pubkey(),
             system_program: system_program::ID,
         }

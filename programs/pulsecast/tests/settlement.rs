@@ -72,12 +72,18 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
         &program_id,
     )
     .0;
+    let oracle_snapshot = Pubkey::find_program_address(
+        &[pulsecast::constants::ORACLE_SNAPSHOT_SEED, round.as_ref()],
+        &program_id,
+    )
+    .0;
     let create = Instruction::new_with_bytes(
         program_id,
         &pulsecast::instruction::CreateMarket { round_id, open_at }.data(),
         pulsecast::accounts::CreateMarket {
             config,
             round,
+            oracle_snapshot,
             authority: sponsor.pubkey(),
             system_program: system_program::ID,
         }
@@ -119,8 +125,7 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
         program_id,
         &pulsecast::instruction::CaptureOpeningPrice {}.data(),
         pulsecast::accounts::CaptureOpeningPrice {
-            config,
-            round,
+            oracle_snapshot,
             price_update,
         }
         .to_account_metas(None),
@@ -159,17 +164,18 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
         open_at + 60,
         PRICE,
     );
-    let resolve = Instruction::new_with_bytes(
+    emulate_committed_closing_snapshot(&mut svm, oracle_snapshot, open_at + 60, PRICE);
+    let finalize = Instruction::new_with_bytes(
         program_id,
-        &pulsecast::instruction::ResolveMarket {}.data(),
-        pulsecast::accounts::ResolveMarket {
+        &pulsecast::instruction::FinalizeMarket {}.data(),
+        pulsecast::accounts::FinalizeMarket {
             config,
             round,
-            price_update,
+            oracle_snapshot,
         }
         .to_account_metas(None),
     );
-    send(&mut svm, &[resolve], &sponsor, &[&sponsor]).unwrap();
+    send(&mut svm, &[finalize], &sponsor, &[&sponsor]).unwrap();
 
     for prediction in &predictions {
         let score = Instruction::new_with_bytes(
@@ -444,4 +450,22 @@ fn round_state(svm: &LiteSVM, address: Pubkey) -> pulsecast::state::Round {
 fn prediction_state(svm: &LiteSVM, address: Pubkey) -> pulsecast::state::Prediction {
     let account = svm.get_account(&address).unwrap();
     pulsecast::state::Prediction::try_deserialize(&mut account.data.as_slice()).unwrap()
+}
+
+fn emulate_committed_closing_snapshot(
+    svm: &mut LiteSVM,
+    address: Pubkey,
+    publish_time: i64,
+    price: i64,
+) {
+    let mut account = svm.get_account(&address).unwrap();
+    let mut snapshot =
+        pulsecast::state::OracleSnapshot::try_deserialize(&mut account.data.as_slice()).unwrap();
+    snapshot.actual_price = price;
+    snapshot.actual_publish_time = publish_time;
+    snapshot.status = pulsecast::state::OracleSnapshotStatus::ClosingCaptured;
+    snapshot
+        .try_serialize(&mut account.data.as_mut_slice())
+        .unwrap();
+    svm.set_account(address, account).unwrap();
 }
