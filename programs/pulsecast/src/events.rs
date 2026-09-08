@@ -7,6 +7,18 @@ pub struct ProtocolPauseChanged {
 }
 
 #[event]
+pub struct AuthorityTransferProposed {
+    pub authority: Pubkey,
+    pub pending_authority: Pubkey,
+}
+
+#[event]
+pub struct AuthorityTransferAccepted {
+    pub previous_authority: Pubkey,
+    pub authority: Pubkey,
+}
+
+#[event]
 pub struct MarketCreated {
     pub round: Pubkey,
     pub round_id: u64,

@@ -1,3 +1,4 @@
+mod authority_transfer;
 mod authorize_prediction_session;
 mod capture_opening_price;
 mod claim_payout;
@@ -14,6 +15,7 @@ mod set_protocol_pause;
 mod settle_market;
 mod submit_prediction;
 
+pub use authority_transfer::{accept_authority, propose_authority};
 pub use authorize_prediction_session::authorize_prediction_session;
 pub use capture_opening_price::capture_opening_price;
 pub use claim_payout::claim_payout;

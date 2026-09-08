@@ -22,6 +22,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
 
     let config = &mut ctx.accounts.config;
     config.authority = ctx.accounts.authority.key();
+    config.pending_authority = Pubkey::default();
     config.usdc_mint = args.usdc_mint;
     config.btc_usd_feed_id = args.btc_usd_feed_id;
     config.oracle_exponent = args.oracle_exponent;

@@ -88,6 +88,41 @@ pub mod pulsecast {
     pub fn unpause_protocol(ctx: Context<SetProtocolPause>) -> Result<()> {
         instructions::set_protocol_pause(ctx, false)
     }
+
+    pub fn propose_authority(
+        ctx: Context<ProposeAuthority>,
+        pending_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::propose_authority(ctx, pending_authority)
+    }
+
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::accept_authority(ctx)
+    }
+}
+
+#[derive(Accounts)]
+pub struct ProposeAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        has_one = authority
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        constraint = config.pending_authority == pending_authority.key() @ errors::PulseCastError::Unauthorized
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    pub pending_authority: Signer<'info>,
 }
 
 #[derive(Accounts)]

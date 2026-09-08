@@ -66,4 +66,6 @@ pub enum PulseCastError {
     ArithmeticOverflow,
     #[msg("The caller is not authorized for this operation")]
     Unauthorized,
+    #[msg("The proposed protocol authority is invalid")]
+    InvalidAuthority,
 }
