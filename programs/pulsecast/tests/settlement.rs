@@ -281,6 +281,113 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
     );
     send(&mut svm, &[close], &sponsor, &[&sponsor]).unwrap();
     assert!(svm.get_account(&round).is_none());
+
+    let cancelled_round_id = 3_u64;
+    let cancelled_open_at = (open_at + 120).div_euclid(60) * 60;
+    let cancelled_round = Pubkey::find_program_address(
+        &[
+            pulsecast::constants::ROUND_SEED,
+            &cancelled_round_id.to_le_bytes(),
+        ],
+        &program_id,
+    )
+    .0;
+    let cancelled_snapshot = Pubkey::find_program_address(
+        &[
+            pulsecast::constants::ORACLE_SNAPSHOT_SEED,
+            cancelled_round.as_ref(),
+        ],
+        &program_id,
+    )
+    .0;
+    let create_cancelled = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::CreateMarket {
+            round_id: cancelled_round_id,
+            open_at: cancelled_open_at,
+        }
+        .data(),
+        pulsecast::accounts::CreateMarket {
+            config,
+            round: cancelled_round,
+            oracle_snapshot: cancelled_snapshot,
+            authority: sponsor.pubkey(),
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    send(&mut svm, &[create_cancelled], &sponsor, &[&sponsor]).unwrap();
+
+    let refund_user = Keypair::new();
+    let refund_ata = get_associated_token_address(&refund_user.pubkey(), &mint);
+    let refund_prediction = prediction_address(program_id, cancelled_round, refund_user.pubkey());
+    set_token_account(
+        &mut svm,
+        refund_ata,
+        mint,
+        refund_user.pubkey(),
+        STARTING_USDC,
+    );
+    set_time(&mut svm, cancelled_open_at);
+    let enter = enter_instruction(
+        program_id,
+        config,
+        cancelled_round,
+        refund_prediction,
+        mint,
+        refund_ata,
+        vault,
+        refund_user.pubkey(),
+        sponsor.pubkey(),
+    );
+    send(&mut svm, &[enter], &sponsor, &[&sponsor, &refund_user]).unwrap();
+    set_time(&mut svm, cancelled_open_at + 71);
+
+    let cancel = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::CancelMarket {}.data(),
+        pulsecast::accounts::CancelMarket {
+            config,
+            round: cancelled_round,
+            oracle_snapshot: cancelled_snapshot,
+            authority: sponsor.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    send(&mut svm, &[cancel], &sponsor, &[&sponsor]).unwrap();
+    assert!(svm.get_account(&cancelled_snapshot).is_none());
+
+    let refund = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::ClaimRefund {}.data(),
+        pulsecast::accounts::ClaimRefund {
+            config,
+            round: cancelled_round,
+            prediction: refund_prediction,
+            usdc_mint: mint,
+            vault,
+            user_usdc: refund_ata,
+            user: refund_user.pubkey(),
+            sponsor: sponsor.pubkey(),
+            token_program: spl_token_interface::ID,
+        }
+        .to_account_metas(None),
+    );
+    send(&mut svm, &[refund], &sponsor, &[&sponsor, &refund_user]).unwrap();
+    assert_eq!(token_balance(&svm, refund_ata), STARTING_USDC);
+    assert!(svm.get_account(&refund_prediction).is_none());
+    let close_cancelled = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::CloseMarket {}.data(),
+        pulsecast::accounts::CloseMarket {
+            config,
+            round: cancelled_round,
+            authority: sponsor.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    send(&mut svm, &[close_cancelled], &sponsor, &[&sponsor]).unwrap();
+    assert!(svm.get_account(&cancelled_round).is_none());
 }
 
 fn send(
@@ -371,9 +478,7 @@ fn claim_instruction(
             user_usdc,
             user,
             sponsor,
-            associated_token_program: spl_associated_token_account_interface::program::ID,
             token_program: spl_token_interface::ID,
-            system_program: system_program::ID,
         }
         .to_account_metas(None),
     )
