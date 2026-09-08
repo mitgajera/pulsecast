@@ -5,10 +5,14 @@ use {
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
+    solana_account::Account as SolanaAccount,
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
+    solana_program_pack::Pack,
     solana_signer::Signer,
     solana_transaction::versioned::VersionedTransaction,
+    spl_associated_token_account_interface::address::get_associated_token_address,
+    spl_token_interface::state::{Account as TokenAccount, AccountState, Mint},
 };
 
 #[test]
@@ -97,6 +101,67 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     assert_eq!(state.entry_amount, args.entry_amount);
     assert_eq!(state.status, pulsecast::state::RoundStatus::Scheduled);
 
+    let user = Keypair::new();
+    let user_starting_usdc = 5_000_000;
+    let mint = pulsecast::constants::DEVNET_USDC_MINT;
+    let user_usdc = get_associated_token_address(&user.pubkey(), &mint);
+    let vault = get_associated_token_address(&config, &mint);
+    let prediction = Pubkey::find_program_address(
+        &[
+            pulsecast::constants::PREDICTION_SEED,
+            round.as_ref(),
+            user.pubkey().as_ref(),
+        ],
+        &program_id,
+    )
+    .0;
+    set_mint(&mut svm, mint, user_starting_usdc);
+    set_token_account(&mut svm, user_usdc, mint, user.pubkey(), user_starting_usdc);
+    assert_eq!(svm.get_balance(&user.pubkey()).unwrap_or_default(), 0);
+
+    let mut clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
+    clock.unix_timestamp = open_at;
+    svm.set_sysvar(&clock);
+    svm.expire_blockhash();
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::EnterMarket {}.data(),
+        pulsecast::accounts::EnterMarket {
+            config,
+            round,
+            prediction,
+            usdc_mint: mint,
+            user_usdc,
+            vault,
+            user: user.pubkey(),
+            sponsor: authority.pubkey(),
+            associated_token_program: spl_associated_token_account_interface::program::ID,
+            token_program: spl_token_interface::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[&authority, &user])
+            .unwrap();
+
+    svm.send_transaction(transaction).unwrap();
+
+    assert_eq!(
+        token_balance(&svm, user_usdc),
+        user_starting_usdc - args.entry_amount
+    );
+    assert_eq!(token_balance(&svm, vault), args.entry_amount);
+    assert_eq!(svm.get_balance(&user.pubkey()).unwrap_or_default(), 0);
+    let account = svm.get_account(&round).unwrap();
+    let state = pulsecast::state::Round::try_deserialize(&mut account.data.as_slice()).unwrap();
+    assert_eq!(state.total_pool, args.entry_amount);
+    assert_eq!(state.prediction_count, 1);
+    assert_eq!(state.status, pulsecast::state::RoundStatus::Betting);
+
     let instruction = Instruction::new_with_bytes(
         program_id,
         &pulsecast::instruction::LockMarket {}.data(),
@@ -111,7 +176,7 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
 
     let account = svm.get_account(&round).unwrap();
     let state = pulsecast::state::Round::try_deserialize(&mut account.data.as_slice()).unwrap();
-    assert_eq!(state.status, pulsecast::state::RoundStatus::Scheduled);
+    assert_eq!(state.status, pulsecast::state::RoundStatus::Betting);
 
     svm.expire_blockhash();
     let mut clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
@@ -133,4 +198,54 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     let account = svm.get_account(&round).unwrap();
     let state = pulsecast::state::Round::try_deserialize(&mut account.data.as_slice()).unwrap();
     assert_eq!(state.status, pulsecast::state::RoundStatus::Watching);
+}
+
+fn set_mint(svm: &mut LiteSVM, address: Pubkey, supply: u64) {
+    let mint = Mint {
+        supply,
+        decimals: 6,
+        is_initialized: true,
+        ..Mint::default()
+    };
+    let mut data = vec![0; Mint::LEN];
+    Mint::pack(mint, &mut data).unwrap();
+    svm.set_account(
+        address,
+        SolanaAccount {
+            lamports: 1_000_000_000,
+            data,
+            owner: spl_token_interface::ID,
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .unwrap();
+}
+
+fn set_token_account(svm: &mut LiteSVM, address: Pubkey, mint: Pubkey, owner: Pubkey, amount: u64) {
+    let token_account = TokenAccount {
+        mint,
+        owner,
+        amount,
+        state: AccountState::Initialized,
+        ..TokenAccount::default()
+    };
+    let mut data = vec![0; TokenAccount::LEN];
+    TokenAccount::pack(token_account, &mut data).unwrap();
+    svm.set_account(
+        address,
+        SolanaAccount {
+            lamports: 1_000_000_000,
+            data,
+            owner: spl_token_interface::ID,
+            executable: false,
+            rent_epoch: 0,
+        },
+    )
+    .unwrap();
+}
+
+fn token_balance(svm: &LiteSVM, address: Pubkey) -> u64 {
+    let account = svm.get_account(&address).unwrap();
+    TokenAccount::unpack(&account.data).unwrap().amount
 }
