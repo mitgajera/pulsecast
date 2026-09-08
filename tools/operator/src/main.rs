@@ -38,6 +38,10 @@ enum Command {
         round_id: Option<u64>,
     },
     ShowConfig,
+    ShowMarket {
+        #[arg(long)]
+        round_id: u64,
+    },
     ShowOracle,
     SetOracleExponent {
         #[arg(long)]
@@ -88,6 +92,10 @@ enum Command {
         round_id: u64,
     },
     FinalizeMarket {
+        #[arg(long)]
+        round_id: u64,
+    },
+    SettleMarket {
         #[arg(long)]
         round_id: u64,
     },
@@ -150,6 +158,24 @@ fn main() -> Result<()> {
                 state.oracle_exponent,
                 state.tee_validator,
                 state.paused
+            );
+        }
+        Command::ShowMarket { round_id } => {
+            let (round, _) = round_addresses(round_id);
+            let state: pulsecast::state::Round = program.account(round)?;
+            println!(
+                "round {round}\nid {}\nstatus {:?}\nopen {}\nlock {}\nresolve {}\nstart price {}\nactual price {}\npool {}\npredictions {}\nscored {}\nclaimed {}",
+                state.id,
+                state.status,
+                state.open_at,
+                state.lock_at,
+                state.resolve_at,
+                state.start_price,
+                state.actual_price,
+                state.total_pool,
+                state.prediction_count,
+                state.scored_count,
+                state.claimed_count
             );
         }
         Command::ShowOracle => {
@@ -390,6 +416,19 @@ fn main() -> Result<()> {
                 .args(pulsecast::instruction::FinalizeMarket {})
                 .send()?;
             println!("finalized round {round}\nsignature {signature}");
+        }
+        Command::SettleMarket { round_id } => {
+            let (round, _) = round_addresses(round_id);
+            let state: pulsecast::state::Round = program.account(round)?;
+            if state.prediction_count != 0 {
+                bail!("non-empty rounds must be scored and settled by the settlement worker");
+            }
+            let signature = program
+                .request()
+                .accounts(pulsecast::accounts::SettleMarket { round })
+                .args(pulsecast::instruction::SettleMarket {})
+                .send()?;
+            println!("settled empty round {round}\nsignature {signature}");
         }
         Command::CloseMarket { round_id } => {
             let config = config_address();
