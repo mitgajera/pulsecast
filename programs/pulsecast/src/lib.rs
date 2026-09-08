@@ -394,6 +394,8 @@ pub struct MakePredictionPrivate<'info> {
     pub permission_program: UncheckedAccount<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut)]
+    pub sponsor: Signer<'info>,
 }
 
 #[delegate]
