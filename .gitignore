@@ -32,4 +32,5 @@ Thumbs.db
 *.md
 !/README.md
 .superstack/
+.brand-preview/
 scripts/
