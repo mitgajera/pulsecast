@@ -123,23 +123,16 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     clock.unix_timestamp = open_at;
     svm.set_sysvar(&clock);
     svm.expire_blockhash();
-    let instruction = Instruction::new_with_bytes(
+    let instruction = enter_market_instruction(
         program_id,
-        &pulsecast::instruction::EnterMarket {}.data(),
-        pulsecast::accounts::EnterMarket {
-            config,
-            round,
-            prediction,
-            usdc_mint: mint,
-            user_usdc,
-            vault,
-            user: user.pubkey(),
-            sponsor: authority.pubkey(),
-            associated_token_program: spl_associated_token_account_interface::program::ID,
-            token_program: spl_token_interface::ID,
-            system_program: system_program::ID,
-        }
-        .to_account_metas(None),
+        config,
+        round,
+        prediction,
+        mint,
+        user_usdc,
+        vault,
+        user.pubkey(),
+        authority.pubkey(),
     );
     let blockhash = svm.latest_blockhash();
     let message =
@@ -161,6 +154,79 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     assert_eq!(state.total_pool, args.entry_amount);
     assert_eq!(state.prediction_count, 1);
     assert_eq!(state.status, pulsecast::state::RoundStatus::Betting);
+
+    svm.expire_blockhash();
+    let instruction = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        prediction,
+        mint,
+        user_usdc,
+        vault,
+        user.pubkey(),
+        authority.pubkey(),
+    );
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[&authority, &user])
+            .unwrap();
+    assert!(svm.send_transaction(transaction).is_err());
+    assert_eq!(
+        token_balance(&svm, user_usdc),
+        user_starting_usdc - args.entry_amount
+    );
+    assert_eq!(token_balance(&svm, vault), args.entry_amount);
+
+    let late_user = Keypair::new();
+    let late_user_usdc = get_associated_token_address(&late_user.pubkey(), &mint);
+    let late_prediction = Pubkey::find_program_address(
+        &[
+            pulsecast::constants::PREDICTION_SEED,
+            round.as_ref(),
+            late_user.pubkey().as_ref(),
+        ],
+        &program_id,
+    )
+    .0;
+    set_token_account(
+        &mut svm,
+        late_user_usdc,
+        mint,
+        late_user.pubkey(),
+        user_starting_usdc,
+    );
+    svm.expire_blockhash();
+    let mut clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
+    clock.unix_timestamp = state.lock_at;
+    svm.set_sysvar(&clock);
+    let instruction = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        late_prediction,
+        mint,
+        late_user_usdc,
+        vault,
+        late_user.pubkey(),
+        authority.pubkey(),
+    );
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[&authority, &late_user])
+            .unwrap();
+    assert!(svm.send_transaction(transaction).is_err());
+    assert_eq!(token_balance(&svm, late_user_usdc), user_starting_usdc);
+    assert!(svm.get_account(&late_prediction).is_none());
+
+    svm.expire_blockhash();
+    let mut clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
+    clock.unix_timestamp = open_at;
+    svm.set_sysvar(&clock);
 
     let instruction = Instruction::new_with_bytes(
         program_id,
@@ -248,4 +314,36 @@ fn set_token_account(svm: &mut LiteSVM, address: Pubkey, mint: Pubkey, owner: Pu
 fn token_balance(svm: &LiteSVM, address: Pubkey) -> u64 {
     let account = svm.get_account(&address).unwrap();
     TokenAccount::unpack(&account.data).unwrap().amount
+}
+
+#[allow(clippy::too_many_arguments)]
+fn enter_market_instruction(
+    program_id: Pubkey,
+    config: Pubkey,
+    round: Pubkey,
+    prediction: Pubkey,
+    mint: Pubkey,
+    user_usdc: Pubkey,
+    vault: Pubkey,
+    user: Pubkey,
+    sponsor: Pubkey,
+) -> Instruction {
+    Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::EnterMarket {}.data(),
+        pulsecast::accounts::EnterMarket {
+            config,
+            round,
+            prediction,
+            usdc_mint: mint,
+            user_usdc,
+            vault,
+            user,
+            sponsor,
+            associated_token_program: spl_associated_token_account_interface::program::ID,
+            token_program: spl_token_interface::ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    )
 }
