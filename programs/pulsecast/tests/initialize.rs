@@ -123,6 +123,86 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     clock.unix_timestamp = open_at;
     svm.set_sysvar(&clock);
     svm.expire_blockhash();
+
+    let wrong_vault_instruction = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        prediction,
+        mint,
+        user_usdc,
+        user_usdc,
+        user.pubkey(),
+        authority.pubkey(),
+    );
+    assert!(!send_user_transaction(
+        &mut svm,
+        wrong_vault_instruction,
+        &authority,
+        &user,
+    ));
+
+    let other_owner = Pubkey::new_unique();
+    let other_owner_usdc = get_associated_token_address(&other_owner, &mint);
+    set_token_account(
+        &mut svm,
+        other_owner_usdc,
+        mint,
+        other_owner,
+        user_starting_usdc,
+    );
+    svm.expire_blockhash();
+    let wrong_owner_instruction = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        prediction,
+        mint,
+        other_owner_usdc,
+        vault,
+        user.pubkey(),
+        authority.pubkey(),
+    );
+    assert!(!send_user_transaction(
+        &mut svm,
+        wrong_owner_instruction,
+        &authority,
+        &user,
+    ));
+
+    let wrong_mint = Pubkey::new_unique();
+    let wrong_mint_user_ata = get_associated_token_address(&user.pubkey(), &wrong_mint);
+    let wrong_mint_vault = get_associated_token_address(&config, &wrong_mint);
+    set_mint(&mut svm, wrong_mint, user_starting_usdc);
+    set_token_account(
+        &mut svm,
+        wrong_mint_user_ata,
+        wrong_mint,
+        user.pubkey(),
+        user_starting_usdc,
+    );
+    svm.expire_blockhash();
+    let wrong_mint_instruction = enter_market_instruction(
+        program_id,
+        config,
+        round,
+        prediction,
+        wrong_mint,
+        wrong_mint_user_ata,
+        wrong_mint_vault,
+        user.pubkey(),
+        authority.pubkey(),
+    );
+    assert!(!send_user_transaction(
+        &mut svm,
+        wrong_mint_instruction,
+        &authority,
+        &user,
+    ));
+    assert_eq!(token_balance(&svm, user_usdc), user_starting_usdc);
+    assert!(svm.get_account(&prediction).is_none());
+
+    svm.expire_blockhash();
     let instruction = enter_market_instruction(
         program_id,
         config,
@@ -346,4 +426,17 @@ fn enter_market_instruction(
         }
         .to_account_metas(None),
     )
+}
+
+fn send_user_transaction(
+    svm: &mut LiteSVM,
+    instruction: Instruction,
+    sponsor: &Keypair,
+    user: &Keypair,
+) -> bool {
+    let blockhash = svm.latest_blockhash();
+    let message = Message::new_with_blockhash(&[instruction], Some(&sponsor.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[sponsor, user]).unwrap();
+    svm.send_transaction(transaction).is_ok()
 }
