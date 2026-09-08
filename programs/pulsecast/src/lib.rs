@@ -80,6 +80,26 @@ pub mod pulsecast {
     pub fn claim_payout(ctx: Context<ClaimPayout>) -> Result<()> {
         instructions::claim_payout(ctx)
     }
+
+    pub fn pause_protocol(ctx: Context<SetProtocolPause>) -> Result<()> {
+        instructions::set_protocol_pause(ctx, true)
+    }
+
+    pub fn unpause_protocol(ctx: Context<SetProtocolPause>) -> Result<()> {
+        instructions::set_protocol_pause(ctx, false)
+    }
+}
+
+#[derive(Accounts)]
+pub struct SetProtocolPause<'info> {
+    #[account(
+        mut,
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        has_one = authority
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    pub authority: Signer<'info>,
 }
 
 #[derive(Accounts)]

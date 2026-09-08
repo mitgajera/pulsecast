@@ -1,6 +1,12 @@
 use anchor_lang::prelude::*;
 
 #[event]
+pub struct ProtocolPauseChanged {
+    pub authority: Pubkey,
+    pub paused: bool,
+}
+
+#[event]
 pub struct MarketCreated {
     pub round: Pubkey,
     pub round_id: u64,

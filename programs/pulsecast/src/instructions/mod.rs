@@ -10,6 +10,7 @@ mod make_prediction_private;
 mod resolve_market;
 mod reveal_prediction;
 mod score_prediction;
+mod set_protocol_pause;
 mod settle_market;
 mod submit_prediction;
 
@@ -25,5 +26,6 @@ pub use make_prediction_private::make_prediction_private;
 pub use resolve_market::resolve_market;
 pub use reveal_prediction::reveal_prediction;
 pub use score_prediction::score_prediction;
+pub use set_protocol_pause::set_protocol_pause;
 pub use settle_market::settle_market;
 pub use submit_prediction::submit_prediction;
