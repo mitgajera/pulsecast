@@ -12,7 +12,7 @@ use {
 };
 
 #[test]
-fn initializes_the_devnet_protocol_config() {
+fn initializes_config_and_creates_a_minute_aligned_market() {
     let program_id = pulsecast::id();
     let authority = Keypair::new();
     let config = Pubkey::find_program_address(&[pulsecast::constants::CONFIG_SEED], &program_id).0;
@@ -60,4 +60,40 @@ fn initializes_the_devnet_protocol_config() {
     assert_eq!(state.fee_bps, args.fee_bps);
     assert_eq!(state.max_error_bps, args.max_error_bps);
     assert!(!state.paused);
+
+    let round_id: u64 = 1;
+    let clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
+    let open_at = clock.unix_timestamp.div_euclid(60).saturating_add(1) * 60;
+    let round = Pubkey::find_program_address(
+        &[pulsecast::constants::ROUND_SEED, &round_id.to_le_bytes()],
+        &program_id,
+    )
+    .0;
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::CreateMarket { round_id, open_at }.data(),
+        pulsecast::accounts::CreateMarket {
+            config,
+            round,
+            authority: authority.pubkey(),
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[&authority]).unwrap();
+
+    svm.send_transaction(transaction).unwrap();
+
+    let account = svm.get_account(&round).unwrap();
+    let state = pulsecast::state::Round::try_deserialize(&mut account.data.as_slice()).unwrap();
+    assert_eq!(state.id, round_id);
+    assert_eq!(state.open_at, open_at);
+    assert_eq!(state.lock_at, open_at + 30);
+    assert_eq!(state.resolve_at, open_at + 60);
+    assert_eq!(state.entry_amount, args.entry_amount);
+    assert_eq!(state.status, pulsecast::state::RoundStatus::Scheduled);
 }
