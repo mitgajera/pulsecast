@@ -97,6 +97,23 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     assert_eq!(state.entry_amount, args.entry_amount);
     assert_eq!(state.status, pulsecast::state::RoundStatus::Scheduled);
 
+    let instruction = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::LockMarket {}.data(),
+        pulsecast::accounts::LockMarket { round }.to_account_metas(None),
+    );
+    let blockhash = svm.latest_blockhash();
+    let message =
+        Message::new_with_blockhash(&[instruction], Some(&authority.pubkey()), &blockhash);
+    let transaction =
+        VersionedTransaction::try_new(VersionedMessage::Legacy(message), &[&authority]).unwrap();
+    assert!(svm.send_transaction(transaction).is_err());
+
+    let account = svm.get_account(&round).unwrap();
+    let state = pulsecast::state::Round::try_deserialize(&mut account.data.as_slice()).unwrap();
+    assert_eq!(state.status, pulsecast::state::RoundStatus::Scheduled);
+
+    svm.expire_blockhash();
     let mut clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
     clock.unix_timestamp = state.lock_at;
     svm.set_sysvar(&clock);
