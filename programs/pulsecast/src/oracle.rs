@@ -50,7 +50,7 @@ pub fn validate_observation(
         PulseCastError::InvalidOracleExponent
     );
     require!(
-        observation.prev_publish_time < target_time && target_time <= observation.publish_time,
+        observation.publish_time >= target_time,
         PulseCastError::OraclePriceBeforeResolution
     );
     require!(

@@ -96,6 +96,10 @@ pub mod pulsecast {
         instructions::set_protocol_pause(ctx, false)
     }
 
+    pub fn set_oracle_exponent(ctx: Context<SetOracleExponent>, exponent: i32) -> Result<()> {
+        instructions::set_oracle_exponent(ctx, exponent)
+    }
+
     pub fn propose_authority(
         ctx: Context<ProposeAuthority>,
         pending_authority: Pubkey,
@@ -134,6 +138,18 @@ pub struct AcceptAuthority<'info> {
 
 #[derive(Accounts)]
 pub struct SetProtocolPause<'info> {
+    #[account(
+        mut,
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        has_one = authority
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetOracleExponent<'info> {
     #[account(
         mut,
         seeds = [constants::CONFIG_SEED],
@@ -427,15 +443,15 @@ pub struct DelegatePrediction<'info> {
     pub config: Account<'info, state::GlobalConfig>,
     #[account(seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
     pub round: Account<'info, state::Round>,
+    /// CHECK: Canonical initialized prediction; unchecked prevents serialization after delegation.
     #[account(
         mut,
         del,
         seeds = [constants::PREDICTION_SEED, round.key().as_ref(), user.key().as_ref()],
-        bump = prediction.bump,
-        has_one = round,
-        has_one = user
+        bump,
+        owner = crate::ID
     )]
-    pub prediction: Account<'info, state::Prediction>,
+    pub prediction: UncheckedAccount<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
 }
@@ -449,13 +465,17 @@ pub struct DelegateOracleSnapshot<'info> {
         has_one = authority
     )]
     pub config: Account<'info, state::GlobalConfig>,
+    #[account(seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, state::Round>,
+    /// CHECK: Canonical initialized snapshot; unchecked prevents serialization after delegation.
     #[account(
         mut,
         del,
-        seeds = [constants::ORACLE_SNAPSHOT_SEED, oracle_snapshot.round.as_ref()],
-        bump = oracle_snapshot.bump
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, round.key().as_ref()],
+        bump,
+        owner = crate::ID
     )]
-    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
+    pub oracle_snapshot: UncheckedAccount<'info>,
     #[account(mut)]
     pub authority: Signer<'info>,
 }

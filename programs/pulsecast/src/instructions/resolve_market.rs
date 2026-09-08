@@ -35,6 +35,7 @@ pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
     snapshot.actual_price = observation.price;
     snapshot.actual_publish_time = observation.publish_time;
     snapshot.status = OracleSnapshotStatus::ClosingCaptured;
+    snapshot.exit(&crate::ID)?;
 
     MagicIntentBundleBuilder::new(
         ctx.accounts.authority.to_account_info(),

@@ -13,7 +13,7 @@ pub fn capture_opening_price(ctx: Context<CaptureOpeningPrice>) -> Result<()> {
     let clock = Clock::get()?;
     let snapshot = &mut ctx.accounts.oracle_snapshot;
     require!(
-        clock.unix_timestamp >= snapshot.open_at && clock.unix_timestamp < snapshot.lock_at,
+        clock.unix_timestamp >= snapshot.open_at,
         PulseCastError::BettingClosed
     );
     require!(
