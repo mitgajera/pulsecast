@@ -65,6 +65,61 @@ fn initializes_market_and_locks_it_at_the_betting_deadline() {
     assert_eq!(state.max_error_bps, args.max_error_bps);
     assert!(!state.paused);
 
+    let replacement = Keypair::new();
+    let impostor = Keypair::new();
+    svm.expire_blockhash();
+    let propose =
+        propose_authority_instruction(program_id, config, authority.pubkey(), replacement.pubkey());
+    assert!(send_authority_transaction(&mut svm, propose, &authority));
+    assert_eq!(
+        config_state(&svm, config).pending_authority,
+        replacement.pubkey()
+    );
+
+    svm.expire_blockhash();
+    let unauthorized_accept = accept_authority_instruction(program_id, config, impostor.pubkey());
+    assert!(!send_user_transaction(
+        &mut svm,
+        unauthorized_accept,
+        &authority,
+        &impostor,
+    ));
+    assert_eq!(config_state(&svm, config).authority, authority.pubkey());
+
+    svm.expire_blockhash();
+    let accept = accept_authority_instruction(program_id, config, replacement.pubkey());
+    assert!(send_user_transaction(
+        &mut svm,
+        accept,
+        &authority,
+        &replacement,
+    ));
+    let state = config_state(&svm, config);
+    assert_eq!(state.authority, replacement.pubkey());
+    assert_eq!(state.pending_authority, Pubkey::default());
+    assert_eq!(
+        svm.get_balance(&replacement.pubkey()).unwrap_or_default(),
+        0
+    );
+
+    svm.expire_blockhash();
+    let propose_back =
+        propose_authority_instruction(program_id, config, replacement.pubkey(), authority.pubkey());
+    assert!(send_user_transaction(
+        &mut svm,
+        propose_back,
+        &authority,
+        &replacement,
+    ));
+    svm.expire_blockhash();
+    let accept_back = accept_authority_instruction(program_id, config, authority.pubkey());
+    assert!(send_authority_transaction(
+        &mut svm,
+        accept_back,
+        &authority,
+    ));
+    assert_eq!(config_state(&svm, config).authority, authority.pubkey());
+
     let round_id: u64 = 1;
     let clock = svm.get_sysvar::<anchor_lang::prelude::Clock>();
     let open_at = clock.unix_timestamp.div_euclid(60).saturating_add(1) * 60;
@@ -518,4 +573,33 @@ fn pause_instruction(
 fn config_state(svm: &LiteSVM, address: Pubkey) -> pulsecast::state::GlobalConfig {
     let account = svm.get_account(&address).unwrap();
     pulsecast::state::GlobalConfig::try_deserialize(&mut account.data.as_slice()).unwrap()
+}
+
+fn propose_authority_instruction(
+    program_id: Pubkey,
+    config: Pubkey,
+    authority: Pubkey,
+    pending_authority: Pubkey,
+) -> Instruction {
+    Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::ProposeAuthority { pending_authority }.data(),
+        pulsecast::accounts::ProposeAuthority { config, authority }.to_account_metas(None),
+    )
+}
+
+fn accept_authority_instruction(
+    program_id: Pubkey,
+    config: Pubkey,
+    pending_authority: Pubkey,
+) -> Instruction {
+    Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::AcceptAuthority {}.data(),
+        pulsecast::accounts::AcceptAuthority {
+            config,
+            pending_authority,
+        }
+        .to_account_metas(None),
+    )
 }
