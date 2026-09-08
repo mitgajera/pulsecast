@@ -113,13 +113,15 @@ pub struct ClaimPayout<'info> {
     pub vault: Account<'info, TokenAccount>,
     #[account(
         init_if_needed,
-        payer = user,
+        payer = sponsor,
         associated_token::mint = usdc_mint,
         associated_token::authority = user
     )]
     pub user_usdc: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut)]
+    pub sponsor: Signer<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -358,7 +360,7 @@ pub struct EnterMarket<'info> {
     pub round: Account<'info, state::Round>,
     #[account(
         init,
-        payer = user,
+        payer = sponsor,
         space = 8 + state::Prediction::INIT_SPACE,
         seeds = [constants::PREDICTION_SEED, round.key().as_ref(), user.key().as_ref()],
         bump
@@ -374,13 +376,15 @@ pub struct EnterMarket<'info> {
     pub user_usdc: Account<'info, TokenAccount>,
     #[account(
         init_if_needed,
-        payer = user,
+        payer = sponsor,
         associated_token::mint = usdc_mint,
         associated_token::authority = config
     )]
     pub vault: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut)]
+    pub sponsor: Signer<'info>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
