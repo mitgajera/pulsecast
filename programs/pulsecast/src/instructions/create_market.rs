@@ -4,7 +4,7 @@ use crate::{
     constants::{BETTING_SECONDS, MARKET_SECONDS},
     errors::PulseCastError,
     events::MarketCreated,
-    state::{is_minute_aligned, RoundStatus},
+    state::{is_minute_aligned, OracleSnapshotStatus, RoundStatus},
     CreateMarket,
 };
 
@@ -32,6 +32,20 @@ pub fn create_market(ctx: Context<CreateMarket>, round_id: u64, open_at: i64) ->
     round.fee_bps = ctx.accounts.config.fee_bps;
     round.max_error_bps = ctx.accounts.config.max_error_bps;
     round.bump = ctx.bumps.round;
+
+    let snapshot = &mut ctx.accounts.oracle_snapshot;
+    snapshot.round = round.key();
+    snapshot.status = OracleSnapshotStatus::Pending;
+    snapshot.open_at = open_at;
+    snapshot.lock_at = lock_at;
+    snapshot.resolve_at = resolve_at;
+    snapshot.feed_id = ctx.accounts.config.btc_usd_feed_id;
+    snapshot.exponent = ctx.accounts.config.oracle_exponent;
+    snapshot.start_price = 0;
+    snapshot.start_publish_time = 0;
+    snapshot.actual_price = 0;
+    snapshot.actual_publish_time = 0;
+    snapshot.bump = ctx.bumps.oracle_snapshot;
 
     emit!(MarketCreated {
         round: round.key(),

@@ -14,6 +14,7 @@ pub struct OracleObservation {
     pub confidence: u64,
     pub exponent: i32,
     pub publish_time: i64,
+    pub prev_publish_time: i64,
 }
 
 pub fn read_verified_observation(
@@ -33,6 +34,7 @@ pub fn read_verified_observation(
         confidence: update.price_message.conf,
         exponent: update.price_message.exponent,
         publish_time: update.price_message.publish_time,
+        prev_publish_time: update.price_message.prev_publish_time,
     })
 }
 
@@ -48,7 +50,7 @@ pub fn validate_observation(
         PulseCastError::InvalidOracleExponent
     );
     require!(
-        observation.publish_time >= target_time,
+        observation.prev_publish_time < target_time && target_time <= observation.publish_time,
         PulseCastError::OraclePriceBeforeResolution
     );
     require!(
@@ -84,6 +86,7 @@ mod tests {
             confidence: 10_000_000,
             exponent: -8,
             publish_time: 180,
+            prev_publish_time: 179,
         }
     }
 

@@ -5,40 +5,41 @@ use crate::{
     errors::PulseCastError,
     events::OpeningPriceCaptured,
     oracle::{read_verified_observation, validate_observation},
-    state::RoundStatus,
+    state::OracleSnapshotStatus,
     CaptureOpeningPrice,
 };
 
 pub fn capture_opening_price(ctx: Context<CaptureOpeningPrice>) -> Result<()> {
     let clock = Clock::get()?;
-    let round = &mut ctx.accounts.round;
+    let snapshot = &mut ctx.accounts.oracle_snapshot;
     require!(
-        matches!(round.status, RoundStatus::Scheduled | RoundStatus::Betting),
-        PulseCastError::InvalidMarketStatus
-    );
-    require!(
-        clock.unix_timestamp >= round.open_at && clock.unix_timestamp < round.lock_at,
+        clock.unix_timestamp >= snapshot.open_at && clock.unix_timestamp < snapshot.lock_at,
         PulseCastError::BettingClosed
     );
     require!(
-        round.start_price == 0,
+        snapshot.status == OracleSnapshotStatus::Pending,
+        PulseCastError::InvalidMarketStatus
+    );
+    require!(
+        snapshot.start_price == 0,
         PulseCastError::OpeningPriceAlreadyCaptured
     );
 
     let data = ctx.accounts.price_update.try_borrow_data()?;
     let update = PriceUpdateV2::try_deserialize_unchecked(&mut data.as_ref())?;
-    let observation = read_verified_observation(&update, ctx.accounts.config.btc_usd_feed_id)?;
+    let observation = read_verified_observation(&update, snapshot.feed_id)?;
     validate_observation(
         observation,
-        ctx.accounts.config.oracle_exponent,
-        round.open_at,
+        snapshot.exponent,
+        snapshot.open_at,
         clock.unix_timestamp,
     )?;
 
-    round.start_price = observation.price;
-    round.start_publish_time = observation.publish_time;
+    snapshot.start_price = observation.price;
+    snapshot.start_publish_time = observation.publish_time;
+    snapshot.status = OracleSnapshotStatus::OpeningCaptured;
     emit!(OpeningPriceCaptured {
-        round: round.key(),
+        round: snapshot.round,
         price: observation.price,
         oracle_publish_time: observation.publish_time,
     });

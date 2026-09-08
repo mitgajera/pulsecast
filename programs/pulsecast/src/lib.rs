@@ -37,6 +37,10 @@ pub mod pulsecast {
         instructions::delegate_prediction(ctx)
     }
 
+    pub fn delegate_oracle_snapshot(ctx: Context<DelegateOracleSnapshot>) -> Result<()> {
+        instructions::delegate_oracle_snapshot(ctx)
+    }
+
     pub fn make_prediction_private(ctx: Context<MakePredictionPrivate>) -> Result<()> {
         instructions::make_prediction_private(ctx)
     }
@@ -66,6 +70,10 @@ pub mod pulsecast {
 
     pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
         instructions::resolve_market(ctx)
+    }
+
+    pub fn finalize_market(ctx: Context<FinalizeMarket>) -> Result<()> {
+        instructions::finalize_market(ctx)
     }
 
     pub fn score_prediction(ctx: Context<ScorePrediction>) -> Result<()> {
@@ -214,38 +222,52 @@ pub struct ScorePrediction<'info> {
 
 #[derive(Accounts)]
 pub struct CaptureOpeningPrice<'info> {
-    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
-    pub config: Account<'info, state::GlobalConfig>,
     #[account(
         mut,
-        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
-        bump = round.bump
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, oracle_snapshot.round.as_ref()],
+        bump = oracle_snapshot.bump
     )]
-    pub round: Account<'info, state::Round>,
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
     /// CHECK: Address and owner are pinned to the configured MagicBlock BTC/USD feed.
     #[account(
-        address = Pubkey::new_from_array(config.btc_usd_feed_id) @ errors::PulseCastError::InvalidOracleFeed,
+        address = Pubkey::new_from_array(oracle_snapshot.feed_id) @ errors::PulseCastError::InvalidOracleFeed,
         owner = constants::MAGICBLOCK_ORACLE_PROGRAM_ID @ errors::PulseCastError::InvalidOracleOwner
     )]
     pub price_update: UncheckedAccount<'info>,
 }
 
+#[commit]
 #[derive(Accounts)]
 pub struct ResolveMarket<'info> {
-    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
-    pub config: Account<'info, state::GlobalConfig>,
     #[account(
         mut,
-        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
-        bump = round.bump
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, oracle_snapshot.round.as_ref()],
+        bump = oracle_snapshot.bump
     )]
-    pub round: Account<'info, state::Round>,
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
     /// CHECK: Address and owner are pinned to the configured MagicBlock BTC/USD feed.
     #[account(
-        address = Pubkey::new_from_array(config.btc_usd_feed_id) @ errors::PulseCastError::InvalidOracleFeed,
+        address = Pubkey::new_from_array(oracle_snapshot.feed_id) @ errors::PulseCastError::InvalidOracleFeed,
         owner = constants::MAGICBLOCK_ORACLE_PROGRAM_ID @ errors::PulseCastError::InvalidOracleOwner
     )]
     pub price_update: UncheckedAccount<'info>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct FinalizeMarket<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        mut,
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, round.key().as_ref()],
+        bump = oracle_snapshot.bump,
+        has_one = round
+    )]
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
 }
 
 #[commit]
@@ -418,6 +440,26 @@ pub struct DelegatePrediction<'info> {
     pub user: Signer<'info>,
 }
 
+#[delegate]
+#[derive(Accounts)]
+pub struct DelegateOracleSnapshot<'info> {
+    #[account(
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        has_one = authority
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(
+        mut,
+        del,
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, oracle_snapshot.round.as_ref()],
+        bump = oracle_snapshot.bump
+    )]
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
 #[derive(Accounts)]
 pub struct EnterMarket<'info> {
     #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
@@ -473,6 +515,14 @@ pub struct CreateMarket<'info> {
         bump
     )]
     pub round: Account<'info, state::Round>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + state::OracleSnapshot::INIT_SPACE,
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, round.key().as_ref()],
+        bump
+    )]
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
     #[account(mut)]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
