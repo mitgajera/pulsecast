@@ -172,10 +172,12 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
             config,
             round,
             oracle_snapshot,
+            authority: sponsor.pubkey(),
         }
         .to_account_metas(None),
     );
     send(&mut svm, &[finalize], &sponsor, &[&sponsor]).unwrap();
+    assert!(svm.get_account(&oracle_snapshot).is_none());
 
     for prediction in &predictions {
         let score = Instruction::new_with_bytes(
@@ -204,10 +206,10 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
     send(&mut svm, &[settle], &sponsor, &[&sponsor]).unwrap();
 
     let expected_payouts = [1_940_000, 970_000, 0];
-    let round_state = round_state(&svm, round);
-    assert_eq!(round_state.status, pulsecast::state::RoundStatus::Settled);
-    assert_eq!(round_state.total_pool, ENTRY_AMOUNT * 3);
-    assert_eq!(round_state.protocol_fee, 90_000);
+    let settled_round = round_state(&svm, round);
+    assert_eq!(settled_round.status, pulsecast::state::RoundStatus::Settled);
+    assert_eq!(settled_round.total_pool, ENTRY_AMOUNT * 3);
+    assert_eq!(settled_round.protocol_fee, 90_000);
 
     for (((user, prediction), user_ata), expected_payout) in users
         .iter()
@@ -229,6 +231,7 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
             sponsor.pubkey(),
         );
         send(&mut svm, &[claim], &sponsor, &[&sponsor, user]).unwrap();
+        assert!(svm.get_account(prediction).is_none());
         assert_eq!(
             token_balance(&svm, *user_ata),
             STARTING_USDC - ENTRY_AMOUNT + expected_payout
@@ -263,6 +266,21 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
     .is_err());
     assert_eq!(token_balance(&svm, user_atas[0]), first_balance);
     assert_eq!(token_balance(&svm, vault), 90_000);
+
+    let round_state = round_state(&svm, round);
+    assert_eq!(round_state.claimed_count, round_state.prediction_count);
+    let close = Instruction::new_with_bytes(
+        program_id,
+        &pulsecast::instruction::CloseMarket {}.data(),
+        pulsecast::accounts::CloseMarket {
+            config,
+            round,
+            authority: sponsor.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    send(&mut svm, &[close], &sponsor, &[&sponsor]).unwrap();
+    assert!(svm.get_account(&round).is_none());
 }
 
 fn send(
