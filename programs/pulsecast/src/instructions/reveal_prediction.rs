@@ -1,8 +1,13 @@
 use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::ephem::{FoldableIntentBuilder, MagicIntentBundleBuilder};
+use session_keys::{session_auth_or, SessionError};
 
 use crate::{errors::PulseCastError, RevealPrediction};
 
+#[session_auth_or(
+    ctx.accounts.prediction.user == ctx.accounts.signer.key(),
+    SessionError::InvalidToken
+)]
 pub fn reveal_prediction(ctx: Context<RevealPrediction>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
     validate_reveal(
@@ -10,9 +15,14 @@ pub fn reveal_prediction(ctx: Context<RevealPrediction>) -> Result<()> {
         now,
         ctx.accounts.prediction.predicted_price,
     )?;
+    require!(
+        ctx.accounts.signer.key() == ctx.accounts.prediction.user
+            || ctx.accounts.signer.key() == ctx.accounts.prediction.session_signer,
+        PulseCastError::InvalidSessionSigner
+    );
 
     MagicIntentBundleBuilder::new(
-        ctx.accounts.user.to_account_info(),
+        ctx.accounts.signer.to_account_info(),
         ctx.accounts.magic_context.to_account_info(),
         ctx.accounts.magic_program.to_account_info(),
     )

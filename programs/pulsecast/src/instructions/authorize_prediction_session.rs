@@ -37,7 +37,7 @@ pub fn authorize_prediction_session(
     UpdateEphemeralPermissionCpi {
         permissioned_account: ctx.accounts.prediction.to_account_info(),
         permission: ctx.accounts.permission.to_account_info(),
-        payer: ctx.accounts.user.to_account_info(),
+        payer: ctx.accounts.sponsor.to_account_info(),
         authority: ctx.accounts.prediction.to_account_info(),
         vault: ctx.accounts.ephemeral_vault.to_account_info(),
         magic_program: ctx.accounts.magic_program.to_account_info(),

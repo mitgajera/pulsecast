@@ -48,6 +48,7 @@ pub fn enter_market(ctx: Context<EnterMarket>) -> Result<()> {
     let prediction = &mut ctx.accounts.prediction;
     prediction.round = round.key();
     prediction.user = ctx.accounts.user.key();
+    prediction.sponsor = ctx.accounts.sponsor.key();
     prediction.session_signer = Pubkey::default();
     prediction.lock_at = round.lock_at;
     prediction.resolve_at = round.resolve_at;

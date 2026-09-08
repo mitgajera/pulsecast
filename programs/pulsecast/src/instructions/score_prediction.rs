@@ -18,26 +18,16 @@ pub fn score_prediction(ctx: Context<ScorePrediction>) -> Result<()> {
     );
     require!(!prediction.scored, PulseCastError::PredictionAlreadyScored);
     require!(
-        prediction.predicted_price > 0,
-        PulseCastError::PredictionMissing
-    );
-    require!(
         round.start_price > 0 && round.actual_price > 0,
         PulseCastError::InvalidPrice
     );
 
-    let error = prediction.predicted_price.abs_diff(round.actual_price);
-    let score = precision_score(
+    let (error, score) = calculate_score(
         prediction.predicted_price,
         round.actual_price,
         round.start_price,
         round.max_error_bps,
-    )
-    .map_err(|error| match error {
-        MathError::InvalidPrice => PulseCastError::InvalidPrice,
-        MathError::InvalidBasisPoints => PulseCastError::InvalidBasisPoints,
-        _ => PulseCastError::ArithmeticOverflow,
-    })?;
+    )?;
 
     round.total_score = round
         .total_score
@@ -59,4 +49,34 @@ pub fn score_prediction(ctx: Context<ScorePrediction>) -> Result<()> {
         score,
     });
     Ok(())
+}
+
+fn calculate_score(
+    predicted_price: i64,
+    actual_price: i64,
+    start_price: i64,
+    max_error_bps: u16,
+) -> Result<(u64, u64)> {
+    Ok(if predicted_price == 0 {
+        (u64::MAX, 0)
+    } else {
+        let error = predicted_price.abs_diff(actual_price);
+        let score = precision_score(predicted_price, actual_price, start_price, max_error_bps)
+            .map_err(|error| match error {
+                MathError::InvalidPrice => PulseCastError::InvalidPrice,
+                MathError::InvalidBasisPoints => PulseCastError::InvalidBasisPoints,
+                _ => PulseCastError::ArithmeticOverflow,
+            })?;
+        (error, score)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_prediction_scores_zero_without_blocking_settlement() {
+        assert_eq!(calculate_score(0, 100, 100, 50).unwrap(), (u64::MAX, 0));
+    }
 }

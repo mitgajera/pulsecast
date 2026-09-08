@@ -68,6 +68,10 @@ pub mod pulsecast {
         instructions::capture_opening_price(ctx)
     }
 
+    pub fn cancel_oracle_snapshot(ctx: Context<CancelOracleSnapshot>) -> Result<()> {
+        instructions::cancel_oracle_snapshot(ctx)
+    }
+
     pub fn resolve_market(ctx: Context<ResolveMarket>) -> Result<()> {
         instructions::resolve_market(ctx)
     }
@@ -86,6 +90,14 @@ pub mod pulsecast {
 
     pub fn claim_payout(ctx: Context<ClaimPayout>) -> Result<()> {
         instructions::claim_payout(ctx)
+    }
+
+    pub fn cancel_market(ctx: Context<CancelMarket>) -> Result<()> {
+        instructions::cancel_market(ctx)
+    }
+
+    pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
+        instructions::claim_refund(ctx)
     }
 
     pub fn close_market(ctx: Context<CloseMarket>) -> Result<()> {
@@ -128,7 +140,7 @@ pub struct ProposeAuthority<'info> {
         bump = config.bump,
         has_one = authority
     )]
-    pub config: Account<'info, state::GlobalConfig>,
+    pub config: Box<Account<'info, state::GlobalConfig>>,
     pub authority: Signer<'info>,
 }
 
@@ -183,13 +195,13 @@ pub struct SetProtocolFee<'info> {
 #[derive(Accounts)]
 pub struct ClaimPayout<'info> {
     #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
-    pub config: Account<'info, state::GlobalConfig>,
+    pub config: Box<Account<'info, state::GlobalConfig>>,
     #[account(
         mut,
         seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
         bump = round.bump
     )]
-    pub round: Account<'info, state::Round>,
+    pub round: Box<Account<'info, state::Round>>,
     #[account(
         mut,
         seeds = [
@@ -200,31 +212,58 @@ pub struct ClaimPayout<'info> {
         bump = prediction.bump,
         has_one = round,
         has_one = user,
+        has_one = sponsor,
         close = sponsor
     )]
-    pub prediction: Account<'info, state::Prediction>,
+    pub prediction: Box<Account<'info, state::Prediction>>,
     #[account(address = config.usdc_mint)]
-    pub usdc_mint: Account<'info, Mint>,
+    pub usdc_mint: Box<Account<'info, Mint>>,
     #[account(
         mut,
         associated_token::mint = usdc_mint,
         associated_token::authority = config
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<Account<'info, TokenAccount>>,
     #[account(
-        init_if_needed,
-        payer = sponsor,
+        mut,
         associated_token::mint = usdc_mint,
         associated_token::authority = user
     )]
-    pub user_usdc: Account<'info, TokenAccount>,
+    pub user_usdc: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub user: Signer<'info>,
     #[account(mut)]
     pub sponsor: Signer<'info>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
-    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimRefund<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    pub config: Box<Account<'info, state::GlobalConfig>>,
+    #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Box<Account<'info, state::Round>>,
+    #[account(
+        mut,
+        seeds = [constants::PREDICTION_SEED, round.key().as_ref(), user.key().as_ref()],
+        bump = prediction.bump,
+        has_one = round,
+        has_one = user,
+        has_one = sponsor,
+        close = sponsor
+    )]
+    pub prediction: Box<Account<'info, state::Prediction>>,
+    #[account(address = config.usdc_mint)]
+    pub usdc_mint: Box<Account<'info, Mint>>,
+    #[account(mut, associated_token::mint = usdc_mint, associated_token::authority = config)]
+    pub vault: Box<Account<'info, TokenAccount>>,
+    #[account(mut, associated_token::mint = usdc_mint, associated_token::authority = user)]
+    pub user_usdc: Box<Account<'info, TokenAccount>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(mut)]
+    pub sponsor: Signer<'info>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -293,8 +332,39 @@ pub struct ResolveMarket<'info> {
     pub authority: Signer<'info>,
 }
 
+#[commit]
+#[derive(Accounts)]
+pub struct CancelOracleSnapshot<'info> {
+    #[account(
+        mut,
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, oracle_snapshot.round.as_ref()],
+        bump = oracle_snapshot.bump
+    )]
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
 #[derive(Accounts)]
 pub struct FinalizeMarket<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
+    pub round: Account<'info, state::Round>,
+    #[account(
+        mut,
+        seeds = [constants::ORACLE_SNAPSHOT_SEED, round.key().as_ref()],
+        bump = oracle_snapshot.bump,
+        has_one = round,
+        close = authority
+    )]
+    pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CancelMarket<'info> {
     #[account(seeds = [constants::CONFIG_SEED], bump = config.bump, has_one = authority)]
     pub config: Account<'info, state::GlobalConfig>,
     #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
@@ -327,21 +397,22 @@ pub struct CloseMarket<'info> {
 }
 
 #[commit]
-#[derive(Accounts)]
+#[derive(Accounts, Session)]
 pub struct RevealPrediction<'info> {
     #[account(
         mut,
         seeds = [
             constants::PREDICTION_SEED,
             prediction.round.as_ref(),
-            user.key().as_ref()
+            prediction.user.as_ref()
         ],
-        bump = prediction.bump,
-        has_one = user
+        bump = prediction.bump
     )]
     pub prediction: Account<'info, state::Prediction>,
+    #[session(signer = signer, authority = prediction.user.key())]
+    pub session_token: Option<Account<'info, SessionTokenV2>>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -402,6 +473,8 @@ pub struct AuthorizePredictionSession<'info> {
     pub permission_program: UncheckedAccount<'info>,
     #[account(mut)]
     pub user: Signer<'info>,
+    #[account(mut, address = prediction.sponsor)]
+    pub sponsor: Signer<'info>,
 }
 
 #[derive(Accounts, Session)]

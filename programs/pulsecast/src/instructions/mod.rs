@@ -1,7 +1,10 @@
 mod authority_transfer;
 mod authorize_prediction_session;
+mod cancel_market;
+mod cancel_oracle_snapshot;
 mod capture_opening_price;
 mod claim_payout;
+mod claim_refund;
 mod close_market;
 mod create_market;
 mod delegate_oracle_snapshot;
@@ -22,8 +25,11 @@ mod submit_prediction;
 
 pub use authority_transfer::{accept_authority, propose_authority};
 pub use authorize_prediction_session::authorize_prediction_session;
+pub use cancel_market::cancel_market;
+pub use cancel_oracle_snapshot::cancel_oracle_snapshot;
 pub use capture_opening_price::capture_opening_price;
 pub use claim_payout::claim_payout;
+pub use claim_refund::claim_refund;
 pub use close_market::close_market;
 pub use create_market::create_market;
 pub use delegate_oracle_snapshot::delegate_oracle_snapshot;

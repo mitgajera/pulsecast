@@ -26,8 +26,7 @@ pub fn finalize_market(ctx: Context<FinalizeMarket>) -> Result<()> {
         PulseCastError::InvalidMarketSchedule
     );
     require!(
-        snapshot.feed_id == ctx.accounts.config.btc_usd_feed_id
-            && snapshot.exponent == ctx.accounts.config.oracle_exponent,
+        snapshot.feed_id == ctx.accounts.config.btc_usd_feed_id,
         PulseCastError::InvalidOracleFeed
     );
     require!(

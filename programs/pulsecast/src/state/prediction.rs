@@ -5,6 +5,7 @@ use anchor_lang::prelude::*;
 pub struct Prediction {
     pub round: Pubkey,
     pub user: Pubkey,
+    pub sponsor: Pubkey,
     pub session_signer: Pubkey,
     pub lock_at: i64,
     pub resolve_at: i64,
