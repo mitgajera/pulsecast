@@ -8,7 +8,12 @@ publish = false
 anchor-client = "=1.0.2"
 anchor-lang = "=1.0.2"
 anyhow = "=1.0.100"
+bs58 = "=0.5.1"
 clap = { version = "=4.5.48", features = ["derive"] }
+ephemeral-rollups-sdk = { version = "=0.16.2", features = ["anchor"] }
 pulsecast = { path = "../../programs/pulsecast", features = ["no-entrypoint"] }
+pyth-solana-receiver-sdk = "=2.0.0"
+reqwest = { version = "=0.12.28", features = ["blocking", "json"] }
+serde_json = "=1.0.151"
 solana-keypair = "=3.1.2"
 solana-system-interface = "=3.3.0"
