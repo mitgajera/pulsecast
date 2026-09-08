@@ -91,6 +91,10 @@ enum Command {
         #[arg(long)]
         round_id: u64,
     },
+    CancelSnapshot {
+        #[arg(long)]
+        round_id: u64,
+    },
     FinalizeMarket {
         #[arg(long)]
         round_id: u64,
@@ -100,6 +104,10 @@ enum Command {
         round_id: u64,
     },
     CloseMarket {
+        #[arg(long)]
+        round_id: u64,
+    },
+    CancelMarket {
         #[arg(long)]
         round_id: u64,
     },
@@ -113,7 +121,10 @@ fn main() -> Result<()> {
     let authority = payer.pubkey();
     let use_router = matches!(
         &cli.command,
-        Command::CaptureOpening { .. } | Command::ResolveMarket { .. } | Command::ShowOracle
+        Command::CaptureOpening { .. }
+            | Command::ResolveMarket { .. }
+            | Command::CancelSnapshot { .. }
+            | Command::ShowOracle
     );
     let (rpc, ws) = if use_router {
         authenticated_private_urls(&cli.private_rpc, &cli.private_ws, &payer)?
@@ -402,6 +413,20 @@ fn main() -> Result<()> {
                 .send()?;
             println!("resolved snapshot {oracle_snapshot}\nsignature {signature}");
         }
+        Command::CancelSnapshot { round_id } => {
+            let (_, oracle_snapshot) = round_addresses(round_id);
+            let signature = program
+                .request()
+                .accounts(pulsecast::accounts::CancelOracleSnapshot {
+                    oracle_snapshot,
+                    authority,
+                    magic_program: sdk_pubkey(ephemeral_rollups_sdk::consts::MAGIC_PROGRAM_ID),
+                    magic_context: sdk_pubkey(ephemeral_rollups_sdk::consts::MAGIC_CONTEXT_ID),
+                })
+                .args(pulsecast::instruction::CancelOracleSnapshot {})
+                .send()?;
+            println!("returned cancelled snapshot {oracle_snapshot}\nsignature {signature}");
+        }
         Command::FinalizeMarket { round_id } => {
             let config = config_address();
             let (round, oracle_snapshot) = round_addresses(round_id);
@@ -443,6 +468,21 @@ fn main() -> Result<()> {
                 .args(pulsecast::instruction::CloseMarket {})
                 .send()?;
             println!("closed round {round}\nsignature {signature}");
+        }
+        Command::CancelMarket { round_id } => {
+            let config = config_address();
+            let (round, oracle_snapshot) = round_addresses(round_id);
+            let signature = program
+                .request()
+                .accounts(pulsecast::accounts::CancelMarket {
+                    config,
+                    round,
+                    oracle_snapshot,
+                    authority,
+                })
+                .args(pulsecast::instruction::CancelMarket {})
+                .send()?;
+            println!("cancelled round {round}\nsignature {signature}");
         }
     }
     Ok(())
