@@ -113,7 +113,7 @@ fn settles_and_claims_a_sponsored_three_user_pool() {
     }
     assert_eq!(token_balance(&svm, vault), ENTRY_AMOUNT * 3);
 
-    let price_update = Pubkey::new_unique();
+    let price_update = Pubkey::new_from_array(FEED_ID);
     set_price_update(&mut svm, price_update, sponsor.pubkey(), open_at, PRICE);
     let capture = Instruction::new_with_bytes(
         program_id,
@@ -423,7 +423,7 @@ fn set_price_update(
         SolanaAccount {
             lamports: 1_000_000_000,
             data,
-            owner: pyth_solana_receiver_sdk::ID,
+            owner: pulsecast::constants::MAGICBLOCK_ORACLE_PROGRAM_ID,
             executable: false,
             rent_epoch: 0,
         },

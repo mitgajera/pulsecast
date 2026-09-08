@@ -5,6 +5,8 @@ pub const MARKET_SECONDS: i64 = 60;
 pub const MAX_PARTICIPANTS: u16 = 16;
 pub const MAX_ORACLE_AGE_SECONDS: i64 = 10;
 pub const MAX_ORACLE_CONFIDENCE_BPS: u16 = 100;
+pub const MAGICBLOCK_ORACLE_PROGRAM_ID: Pubkey =
+    pubkey!("PriCems5tHihc6UDXDjzjeawomAwBduWMGAi8ZUjppd");
 pub const ORACLE_GRACE_SECONDS: i64 = 10;
 pub const PREDICTION_SEED: &[u8] = b"prediction";
 pub const PRIVATE_COMMIT_FREQUENCY_MS: u32 = u32::MAX;

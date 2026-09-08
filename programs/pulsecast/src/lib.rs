@@ -4,7 +4,6 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
-use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use session_keys::{Session, SessionTokenV2};
 
 pub mod constants;
@@ -223,7 +222,12 @@ pub struct CaptureOpeningPrice<'info> {
         bump = round.bump
     )]
     pub round: Account<'info, state::Round>,
-    pub price_update: Account<'info, PriceUpdateV2>,
+    /// CHECK: Address and owner are pinned to the configured MagicBlock BTC/USD feed.
+    #[account(
+        address = Pubkey::new_from_array(config.btc_usd_feed_id) @ errors::PulseCastError::InvalidOracleFeed,
+        owner = constants::MAGICBLOCK_ORACLE_PROGRAM_ID @ errors::PulseCastError::InvalidOracleOwner
+    )]
+    pub price_update: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -236,7 +240,12 @@ pub struct ResolveMarket<'info> {
         bump = round.bump
     )]
     pub round: Account<'info, state::Round>,
-    pub price_update: Account<'info, PriceUpdateV2>,
+    /// CHECK: Address and owner are pinned to the configured MagicBlock BTC/USD feed.
+    #[account(
+        address = Pubkey::new_from_array(config.btc_usd_feed_id) @ errors::PulseCastError::InvalidOracleFeed,
+        owner = constants::MAGICBLOCK_ORACLE_PROGRAM_ID @ errors::PulseCastError::InvalidOracleOwner
+    )]
+    pub price_update: UncheckedAccount<'info>,
 }
 
 #[commit]

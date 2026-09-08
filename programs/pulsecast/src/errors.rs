@@ -22,6 +22,8 @@ pub enum PulseCastError {
     PredictionMissing,
     #[msg("The oracle account does not match the configured BTC/USD feed")]
     InvalidOracleFeed,
+    #[msg("The oracle account is not owned by the MagicBlock pricing program")]
+    InvalidOracleOwner,
     #[msg("The oracle update is not fully verified")]
     OracleNotFullyVerified,
     #[msg("The oracle observation is stale")]
