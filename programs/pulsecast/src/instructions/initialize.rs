@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    constants::{BPS_DENOMINATOR, DEVNET_USDC_MINT},
+    constants::{BPS_DENOMINATOR, DEVNET_USDC_MINT, MAX_PROTOCOL_FEE_BPS},
     errors::PulseCastError,
     Initialize,
 };
@@ -44,7 +44,7 @@ fn validate_args(args: &InitializeArgs) -> Result<()> {
     );
     require!(args.entry_amount > 0, PulseCastError::InvalidEntryAmount);
     require!(
-        u128::from(args.fee_bps) <= BPS_DENOMINATOR,
+        args.fee_bps <= MAX_PROTOCOL_FEE_BPS,
         PulseCastError::InvalidBasisPoints
     );
     require!(
@@ -56,7 +56,7 @@ fn validate_args(args: &InitializeArgs) -> Result<()> {
         PulseCastError::InvalidFeedId
     );
     require!(
-        (-12..=0).contains(&args.oracle_exponent),
+        (-12..=12).contains(&args.oracle_exponent),
         PulseCastError::InvalidOracleExponent
     );
     require!(
@@ -110,7 +110,7 @@ mod tests {
         assert!(validate_args(&args).is_err());
 
         args = valid_args();
-        args.oracle_exponent = 1;
+        args.oracle_exponent = 13;
         assert!(validate_args(&args).is_err());
     }
 }

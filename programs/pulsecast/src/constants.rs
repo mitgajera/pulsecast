@@ -3,6 +3,7 @@ pub const BETTING_SECONDS: i64 = 30;
 pub const CONFIG_SEED: &[u8] = b"config";
 pub const MARKET_SECONDS: i64 = 60;
 pub const MAX_PARTICIPANTS: u16 = 16;
+pub const MAX_PROTOCOL_FEE_BPS: u16 = 300;
 pub const MAX_ORACLE_AGE_SECONDS: i64 = 10;
 pub const MAX_ORACLE_CONFIDENCE_BPS: u16 = 100;
 pub const MAGICBLOCK_ORACLE_PROGRAM_ID: Pubkey =

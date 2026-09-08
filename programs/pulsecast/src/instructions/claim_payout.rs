@@ -19,6 +19,12 @@ pub fn claim_payout(ctx: Context<ClaimPayout>) -> Result<()> {
 
     let amount = ctx.accounts.prediction.payout;
     ctx.accounts.prediction.claimed = true;
+    ctx.accounts.round.claimed_count = ctx
+        .accounts
+        .round
+        .claimed_count
+        .checked_add(1)
+        .ok_or(PulseCastError::ArithmeticOverflow)?;
 
     if amount > 0 {
         let bump = [ctx.accounts.config.bump];

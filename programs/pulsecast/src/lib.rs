@@ -88,6 +88,10 @@ pub mod pulsecast {
         instructions::claim_payout(ctx)
     }
 
+    pub fn close_market(ctx: Context<CloseMarket>) -> Result<()> {
+        instructions::close_market(ctx)
+    }
+
     pub fn pause_protocol(ctx: Context<SetProtocolPause>) -> Result<()> {
         instructions::set_protocol_pause(ctx, true)
     }
@@ -98,6 +102,10 @@ pub mod pulsecast {
 
     pub fn set_oracle_exponent(ctx: Context<SetOracleExponent>, exponent: i32) -> Result<()> {
         instructions::set_oracle_exponent(ctx, exponent)
+    }
+
+    pub fn set_protocol_fee(ctx: Context<SetProtocolFee>, fee_bps: u16) -> Result<()> {
+        instructions::set_protocol_fee(ctx, fee_bps)
     }
 
     pub fn propose_authority(
@@ -161,10 +169,23 @@ pub struct SetOracleExponent<'info> {
 }
 
 #[derive(Accounts)]
+pub struct SetProtocolFee<'info> {
+    #[account(
+        mut,
+        seeds = [constants::CONFIG_SEED],
+        bump = config.bump,
+        has_one = authority
+    )]
+    pub config: Account<'info, state::GlobalConfig>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
 pub struct ClaimPayout<'info> {
     #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
     pub config: Account<'info, state::GlobalConfig>,
     #[account(
+        mut,
         seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
         bump = round.bump
     )]
@@ -178,7 +199,8 @@ pub struct ClaimPayout<'info> {
         ],
         bump = prediction.bump,
         has_one = round,
-        has_one = user
+        has_one = user,
+        close = sponsor
     )]
     pub prediction: Account<'info, state::Prediction>,
     #[account(address = config.usdc_mint)]
@@ -273,7 +295,7 @@ pub struct ResolveMarket<'info> {
 
 #[derive(Accounts)]
 pub struct FinalizeMarket<'info> {
-    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump)]
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump, has_one = authority)]
     pub config: Account<'info, state::GlobalConfig>,
     #[account(mut, seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()], bump = round.bump)]
     pub round: Account<'info, state::Round>,
@@ -281,9 +303,27 @@ pub struct FinalizeMarket<'info> {
         mut,
         seeds = [constants::ORACLE_SNAPSHOT_SEED, round.key().as_ref()],
         bump = oracle_snapshot.bump,
-        has_one = round
+        has_one = round,
+        close = authority
     )]
     pub oracle_snapshot: Account<'info, state::OracleSnapshot>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CloseMarket<'info> {
+    #[account(seeds = [constants::CONFIG_SEED], bump = config.bump, has_one = authority)]
+    pub config: Account<'info, state::GlobalConfig>,
+    #[account(
+        mut,
+        close = authority,
+        seeds = [constants::ROUND_SEED, &round.id.to_le_bytes()],
+        bump = round.bump
+    )]
+    pub round: Account<'info, state::Round>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
 }
 
 #[commit]
