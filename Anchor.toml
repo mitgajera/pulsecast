@@ -13,6 +13,6 @@ pulsecast = "4UVCJQeggToFwbNx4QgbAvFe1cpQ3aUWRVkYV19VJUQu"
 
 [provider]
 cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+wallet = ".wallets/operator.json"
 
 [hooks]
