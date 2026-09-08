@@ -43,10 +43,14 @@ enum Command {
         #[arg(long)]
         exponent: i32,
     },
+    SetProtocolFee {
+        #[arg(long, default_value_t = 100)]
+        fee_bps: u16,
+    },
     Initialize {
         #[arg(long, default_value_t = 1_000_000)]
         entry_amount: u64,
-        #[arg(long, default_value_t = 300)]
+        #[arg(long, default_value_t = 100)]
         fee_bps: u16,
         #[arg(long, default_value_t = 50)]
         max_error_bps: u16,
@@ -74,6 +78,10 @@ enum Command {
         round_id: u64,
     },
     FinalizeMarket {
+        #[arg(long)]
+        round_id: u64,
+    },
+    CloseMarket {
         #[arg(long)]
         round_id: u64,
     },
@@ -123,12 +131,13 @@ fn main() -> Result<()> {
                 .account(config)
                 .with_context(|| format!("config {config} is not initialized"))?;
             println!(
-                "config {config}\nauthority {}\nusdc mint {}\nentry amount {}\nfee bps {}\nmax error bps {}\ntee validator {}\npaused {}",
+                "config {config}\nauthority {}\nusdc mint {}\nentry amount {}\nfee bps {}\nmax error bps {}\noracle exponent {}\ntee validator {}\npaused {}",
                 state.authority,
                 state.usdc_mint,
                 state.entry_amount,
                 state.fee_bps,
                 state.max_error_bps,
+                state.oracle_exponent,
                 state.tee_validator,
                 state.paused
             );
@@ -160,6 +169,15 @@ fn main() -> Result<()> {
                 .send()?;
             println!("updated oracle exponent to {exponent}\nsignature {signature}");
         }
+        Command::SetProtocolFee { fee_bps } => {
+            let config = config_address();
+            let signature = program
+                .request()
+                .accounts(pulsecast::accounts::SetProtocolFee { config, authority })
+                .args(pulsecast::instruction::SetProtocolFee { fee_bps })
+                .send()?;
+            println!("updated protocol fee to {fee_bps} bps\nsignature {signature}");
+        }
         Command::Initialize {
             entry_amount,
             fee_bps,
@@ -169,7 +187,7 @@ fn main() -> Result<()> {
             let args = pulsecast::instructions::InitializeArgs {
                 usdc_mint: pulsecast::constants::DEVNET_USDC_MINT,
                 btc_usd_feed_id: Pubkey::from_str(MAGICBLOCK_BTC_FEED)?.to_bytes(),
-                oracle_exponent: -8,
+                oracle_exponent: 8,
                 tee_validator: Pubkey::from_str(MAGICBLOCK_TEE_VALIDATOR)?,
                 entry_amount,
                 fee_bps,
@@ -312,10 +330,25 @@ fn main() -> Result<()> {
                     config,
                     round,
                     oracle_snapshot,
+                    authority,
                 })
                 .args(pulsecast::instruction::FinalizeMarket {})
                 .send()?;
             println!("finalized round {round}\nsignature {signature}");
+        }
+        Command::CloseMarket { round_id } => {
+            let config = config_address();
+            let (round, _) = round_addresses(round_id);
+            let signature = program
+                .request()
+                .accounts(pulsecast::accounts::CloseMarket {
+                    config,
+                    round,
+                    authority,
+                })
+                .args(pulsecast::instruction::CloseMarket {})
+                .send()?;
+            println!("closed round {round}\nsignature {signature}");
         }
     }
     Ok(())
