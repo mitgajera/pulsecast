@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createOracleHistory, mergeOracleSamples, nextFixtureSample } from "./oracle-sample";
+import { createOracleHistory, mergeOracleHistory, mergeOracleSamples, nextFixtureSample } from "./oracle-sample";
 
 describe("oracle sample fixtures", () => {
   it("creates ordered half-second history without gaps", () => {
@@ -20,9 +20,18 @@ describe("oracle sample fixtures", () => {
   it("adds a newer bounded sample", () => {
     const history = createOracleHistory(1_800_000_000);
     const latest = history.at(-1)!;
-    const next = nextFixtureSample(latest, latest.sourceTimestampMs + 200);
+    const next = nextFixtureSample(latest, latest.sourceTimestampMs + 200, 1_800_000_000);
     const merged = mergeOracleSamples(history, next);
     expect(merged).toHaveLength(182);
     expect(merged.at(-1)).toEqual(next);
+  });
+
+  it("reconciles overlapping history without duplicates", () => {
+    const history = createOracleHistory(1_800_000_000);
+    const latest = history.at(-1)!;
+    const newer = nextFixtureSample(latest, latest.sourceTimestampMs + 500, 1_800_000_000);
+    const merged = mergeOracleHistory(history, [history.at(-2)!, latest, newer]);
+    expect(merged).toHaveLength(history.length + 1);
+    expect(merged.at(-1)).toEqual(newer);
   });
 });

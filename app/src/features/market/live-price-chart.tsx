@@ -10,9 +10,10 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { marketHistorySchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
-import { mergeOracleSamples, nextFixtureSample, type OracleSample } from "./oracle-sample";
+import { mergeOracleHistory, mergeOracleSamples, nextFixtureSample, type OracleSample } from "./oracle-sample";
 
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
@@ -32,6 +33,7 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
   const frameRef = useRef(0);
   const [latest, setLatest] = useState(initialSamples.at(-1));
   const [following, setFollowing] = useState(true);
+  const [feedState, setFeedState] = useState<"live" | "reconnecting">("live");
 
   useEffect(() => {
     const container = containerRef.current;
@@ -95,7 +97,7 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
       if (document.hidden) return;
       const previous = samplesRef.current.at(-1);
       if (!previous) return;
-      pendingRef.current = nextFixtureSample(previous, Date.now());
+      pendingRef.current = nextFixtureSample(previous, Date.now(), openAt);
       if (frameRef.current) return;
       frameRef.current = requestAnimationFrame(() => {
         frameRef.current = 0;
@@ -109,7 +111,42 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
       });
     }, 200);
     return () => window.clearInterval(interval);
-  }, [following]);
+  }, [following, openAt]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function reconcile() {
+      try {
+        const response = await fetch(`/api/markets/${openAt}/history`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("History request failed");
+        const parsed = marketHistorySchema.parse(await response.json());
+        const previousLength = samplesRef.current.length;
+        const merged = mergeOracleHistory(samplesRef.current, parsed.samples);
+        samplesRef.current = merged;
+        for (const sample of merged.slice(previousLength)) {
+          seriesRef.current?.update({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price });
+        }
+        const newest = merged.at(-1);
+        if (newest) setLatest(newest);
+        setFeedState("live");
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setFeedState("reconnecting");
+      }
+    }
+
+    const interval = window.setInterval(reconcile, 5_000);
+    const onVisibility = () => { if (!document.hidden) void reconcile(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [openAt]);
 
   function returnToLive() {
     chartRef.current?.timeScale().scrollToRealTime();
@@ -124,7 +161,7 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
           <p className="mt-1 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{latest ? currency.format(latest.price) : "—"}</p>
           <p className="mt-1 text-xs text-muted-foreground">Fixture oracle · 200ms</p>
         </div>
-        <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">Live</p>
+        <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">{feedState === "live" ? "Live" : "Reconnecting"}</p>
       </div>
       <div className="absolute inset-0" ref={containerRef} aria-label="Interactive Bitcoin price chart" role="img" />
       <div className="pointer-events-none absolute inset-y-0 z-10 border-l border-dashed border-muted-foreground/60" style={{ left: `${((lockAt - (openAt - 90)) / (resolveAt + 20 - (openAt - 90))) * 100}%` }}><span className="absolute bottom-3 -translate-x-1/2 bg-card px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Lock</span></div>
