@@ -7,11 +7,13 @@
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
+    "test": "vitest run",
     "typecheck": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "@pulsecast/protocol": "*",
     "@pulsecast/shared": "*",
+    "lightweight-charts": "^5.2.1",
     "next": "16.3.4",
     "react": "19.3.0",
     "react-dom": "19.3.0"
