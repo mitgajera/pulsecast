@@ -27,6 +27,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+*.bak
 
 # Local planning and agent context
 *.md
