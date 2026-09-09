@@ -1,13 +1,14 @@
+import type { MarketHistory } from "@pulsecast/shared";
+
 import { ForecastTicket } from "./forecast-ticket";
 import type { MarketRound } from "./fixtures";
 import { MarketClock } from "./market-clock";
-import { createOracleHistory } from "./oracle-sample";
 import { PriceChartShell } from "./price-chart-shell";
 import { RoundRail } from "./round-rail";
 
 const usdc = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency", minimumFractionDigits: 2 });
 
-export function LiveArena({ initialServerTimeMs, rounds }: { initialServerTimeMs: number; rounds: MarketRound[] }) {
+export function LiveArena({ history, initialServerTimeMs, rounds }: { history: MarketHistory; initialServerTimeMs: number; rounds: MarketRound[] }) {
   const current = rounds[1];
   if (!current) return null;
   const watching = initialServerTimeMs >= current.lockAt * 1_000;
@@ -28,7 +29,7 @@ export function LiveArena({ initialServerTimeMs, rounds }: { initialServerTimeMs
             <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
           </section>
           <PriceChartShell
-            initialSamples={createOracleHistory(current.openAt)}
+            initialSamples={history.samples}
             lockAt={current.lockAt}
             openAt={current.openAt}
             resolveAt={current.resolveAt}
