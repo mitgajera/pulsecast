@@ -1,6 +1,7 @@
 import { ForecastTicket } from "./forecast-ticket";
 import type { MarketRound } from "./fixtures";
 import { MarketClock } from "./market-clock";
+import { createOracleHistory } from "./oracle-sample";
 import { PriceChartShell } from "./price-chart-shell";
 import { RoundRail } from "./round-rail";
 
@@ -26,7 +27,12 @@ export function LiveArena({ initialServerTimeMs, rounds }: { initialServerTimeMs
             </div>
             <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
           </section>
-          <PriceChartShell />
+          <PriceChartShell
+            initialSamples={createOracleHistory(current.openAt)}
+            lockAt={current.lockAt}
+            openAt={current.openAt}
+            resolveAt={current.resolveAt}
+          />
           <section className="grid border-x border-b bg-card sm:grid-cols-3" aria-label="Round statistics">
             <Stat label="Pool" value={`${usdc.format(current.poolUsdc)} USDC`} />
             <Stat label="Predictions" value={String(current.predictions)} />

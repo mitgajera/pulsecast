@@ -1,0 +1,136 @@
+"use client";
+
+import {
+  AreaSeries,
+  ColorType,
+  CrosshairMode,
+  createChart,
+  LineStyle,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from "lightweight-charts";
+import { useEffect, useRef, useState } from "react";
+
+import { mergeOracleSamples, nextFixtureSample, type OracleSample } from "./oracle-sample";
+
+type LivePriceChartProps = {
+  initialSamples: OracleSample[];
+  lockAt: number;
+  openAt: number;
+  resolveAt: number;
+};
+
+const currency = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
+
+export default function LivePriceChart({ initialSamples, lockAt, openAt, resolveAt }: LivePriceChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const samplesRef = useRef(initialSamples);
+  const pendingRef = useRef<OracleSample | null>(null);
+  const frameRef = useRef(0);
+  const [latest, setLatest] = useState(initialSamples.at(-1));
+  const [following, setFollowing] = useState(true);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const styles = getComputedStyle(document.documentElement);
+    const chart = createChart(container, {
+      autoSize: true,
+      layout: {
+        background: { color: "transparent", type: ColorType.Solid },
+        textColor: styles.getPropertyValue("--muted-foreground").trim(),
+        fontFamily: "var(--font-geist-mono)",
+        fontSize: 11,
+      },
+      crosshair: { mode: CrosshairMode.Normal },
+      grid: {
+        horzLines: { color: styles.getPropertyValue("--border").trim(), style: LineStyle.Solid },
+        vertLines: { visible: false },
+      },
+      handleScale: { axisDoubleClickReset: true, mouseWheel: true, pinch: true },
+      handleScroll: { horzTouchDrag: true, mouseWheel: true, pressedMouseMove: true, vertTouchDrag: false },
+      leftPriceScale: { visible: false },
+      rightPriceScale: { borderVisible: false, scaleMargins: { bottom: 0.18, top: 0.2 } },
+      timeScale: { borderVisible: false, rightOffset: 12, secondsVisible: true, timeVisible: true },
+    });
+    const series = chart.addSeries(AreaSeries, {
+      lineColor: styles.getPropertyValue("--primary").trim(),
+      lineType: 0,
+      lineWidth: 2,
+      topColor: "color-mix(in oklch, var(--primary) 18%, transparent)",
+      bottomColor: "transparent",
+      priceFormat: { minMove: 0.01, precision: 2, type: "price" },
+    });
+    series.setData(initialSamples.map((sample) => ({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price })));
+    series.createPriceLine({
+      axisLabelVisible: true,
+      color: styles.getPropertyValue("--muted-foreground").trim(),
+      lineStyle: LineStyle.Dashed,
+      lineWidth: 1,
+      price: initialSamples.find((sample) => sample.sourceTimestampMs >= openAt * 1_000)?.price ?? initialSamples.at(-1)?.price ?? 0,
+      title: "OPEN",
+    });
+    chart.timeScale().setVisibleRange({ from: (openAt - 90) as UTCTimestamp, to: (resolveAt + 20) as UTCTimestamp });
+    chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+      setFollowing(chart.timeScale().scrollPosition() >= -14);
+    });
+    chartRef.current = chart;
+    seriesRef.current = series;
+
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    };
+  }, [initialSamples, openAt, resolveAt]);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const interval = window.setInterval(() => {
+      if (document.hidden) return;
+      const previous = samplesRef.current.at(-1);
+      if (!previous) return;
+      pendingRef.current = nextFixtureSample(previous, Date.now());
+      if (frameRef.current) return;
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = 0;
+        const sample = pendingRef.current;
+        if (!sample) return;
+        pendingRef.current = null;
+        samplesRef.current = mergeOracleSamples(samplesRef.current, sample);
+        seriesRef.current?.update({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price });
+        setLatest(sample);
+        if (following && !reducedMotion) chartRef.current?.timeScale().scrollToRealTime();
+      });
+    }, 200);
+    return () => window.clearInterval(interval);
+  }, [following]);
+
+  function returnToLive() {
+    chartRef.current?.timeScale().scrollToRealTime();
+    setFollowing(true);
+  }
+
+  return (
+    <div className="relative h-full min-h-[280px] sm:min-h-[360px]">
+      <div className="pointer-events-none absolute inset-x-4 top-4 z-20 flex items-start justify-between gap-4 sm:inset-x-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">BTC / USD</p>
+          <p className="mt-1 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{latest ? currency.format(latest.price) : "—"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Fixture oracle · 200ms</p>
+        </div>
+        <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">Live</p>
+      </div>
+      <div className="absolute inset-0" ref={containerRef} aria-label="Interactive Bitcoin price chart" role="img" />
+      <div className="pointer-events-none absolute inset-y-0 z-10 border-l border-dashed border-muted-foreground/60" style={{ left: `${((lockAt - (openAt - 90)) / (resolveAt + 20 - (openAt - 90))) * 100}%` }}><span className="absolute bottom-3 -translate-x-1/2 bg-card px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Lock</span></div>
+      <div className="pointer-events-none absolute inset-y-0 z-10 border-l border-primary/80" style={{ left: `${((resolveAt - (openAt - 90)) / (resolveAt + 20 - (openAt - 90))) * 100}%` }}><span className="absolute bottom-3 -translate-x-1/2 bg-card px-2 font-mono text-[10px] uppercase tracking-wider text-primary">Resolve</span></div>
+      {!following && <button className="absolute bottom-10 right-16 z-20 min-h-10 border bg-card px-3 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={returnToLive} type="button">Return to live</button>}
+      <p className="sr-only" aria-live="off">Current price {latest ? currency.format(latest.price) : "unavailable"}. Opening, betting lock, and resolution markers are shown.</p>
+    </div>
+  );
+}
