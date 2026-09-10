@@ -1,6 +1,8 @@
-import { createMarketFixture } from "@/features/market/fixtures";
+import { selectArenaRounds, toArenaRound } from "@/features/market/arena-rounds";
 import { LiveArena } from "@/features/market/live-arena";
+import { NoLiveMarket } from "@/features/market/no-live-market";
 import { getMarketHistory } from "@/server/market-history";
+import { fetchRoundIndex } from "@/server/round-index";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +10,13 @@ export default async function Home() {
   // A live round is intentionally anchored to request time on the server.
   // eslint-disable-next-line react-hooks/purity
   const initialServerTimeMs = Date.now();
+  const index = await fetchRoundIndex(initialServerTimeMs);
+  const selection = selectArenaRounds(index.rounds, Math.floor(initialServerTimeMs / 1_000));
+  const arenaRounds = [
+    selection.previous && toArenaRound(selection.previous, "Previous", Math.floor(initialServerTimeMs / 1_000)),
+    selection.current && toArenaRound(selection.current, "Live", Math.floor(initialServerTimeMs / 1_000)),
+    selection.next && toArenaRound(selection.next, "Next", Math.floor(initialServerTimeMs / 1_000)),
+  ].filter((round) => round !== null);
   return (
     <div className="min-h-screen">
       <header className="border-b bg-background/95">
@@ -19,7 +28,13 @@ export default async function Home() {
           <div className="flex items-center gap-3"><span className="hidden text-xs text-muted-foreground sm:inline">Interface preview</span><button className="min-h-10 border bg-card px-4 text-sm font-medium text-muted-foreground" disabled type="button">Sign in</button></div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8" id="market"><LiveArena history={await getMarketHistory(Math.floor(initialServerTimeMs / 60_000) * 60, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={createMarketFixture(initialServerTimeMs)} /></div>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8" id="market">
+        {selection.current ? (
+          <LiveArena history={await getMarketHistory(selection.current.openAt, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={arenaRounds} />
+        ) : (
+          <NoLiveMarket rounds={index.rounds} />
+        )}
+      </div>
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t px-4 py-6 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-precision markets</p><p>Preview data · Devnet only</p></footer>
     </div>
   );

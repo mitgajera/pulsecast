@@ -9,9 +9,9 @@ import { RoundRail } from "./round-rail";
 const usdc = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency", minimumFractionDigits: 2 });
 
 export function LiveArena({ history, initialServerTimeMs, rounds }: { history: MarketHistory; initialServerTimeMs: number; rounds: MarketRound[] }) {
-  const current = rounds[1];
+  const current = rounds.find((round) => round.label === "Live");
   if (!current) return null;
-  const watching = initialServerTimeMs >= current.lockAt * 1_000;
+  const watching = current.phase !== "betting";
 
   return (
     <>
