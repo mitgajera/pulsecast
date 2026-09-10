@@ -2,19 +2,38 @@
 
 import { useState } from "react";
 
+import { usePulseCastAuth } from "@/features/auth/auth-context";
+
 export function ForecastTicket({ watching }: { watching: boolean }) {
+  const auth = usePulseCastAuth();
   const [forecast, setForecast] = useState("112920.00");
   const [message, setMessage] = useState("");
 
   function preparePrediction(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!auth.authenticated) {
+      auth.login();
+      return;
+    }
+
     const parsed = Number(forecast);
     if (!Number.isFinite(parsed) || parsed <= 0) {
       setMessage("Enter a valid BTC price above zero.");
       return;
     }
-    setMessage("Preview only — wallet signing is not connected yet.");
+    setMessage("Wallet ready. Transaction preparation is the next integration step.");
   }
+
+  const unavailable = watching || !auth.configured || !auth.ready;
+  const actionLabel = watching
+    ? "Betting closed"
+    : !auth.configured
+      ? "Auth setup required"
+      : !auth.ready
+        ? "Checking account..."
+        : auth.authenticated
+          ? "Prepare prediction"
+          : "Sign in to predict";
 
   return (
     <section className="border bg-card" aria-labelledby="forecast-title">
@@ -41,33 +60,25 @@ export function ForecastTicket({ watching }: { watching: boolean }) {
             />
             <span className="pr-3 text-xs font-medium text-muted-foreground">USD</span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground" id="forecast-help">
-            Closest prediction shares the devnet USDC pool.
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground" id="forecast-help">Closest prediction shares the devnet USDC pool.</p>
           <p className="mt-2 min-h-5 text-xs text-chart-4" id="forecast-message" role="status">
             {watching ? "Predictions are locked for this round." : message}
           </p>
         </div>
         <label className="block text-sm font-medium" htmlFor="stake">
           Stake
-          <div className="mt-2 flex min-h-12 items-center border bg-input focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
-            <input
-              className="min-w-0 flex-1 bg-transparent px-3 py-3 font-mono tabular-nums outline-none"
-              defaultValue="10.00"
-              disabled={watching}
-              id="stake"
-              inputMode="decimal"
-              type="text"
-            />
+          <div className="mt-2 flex min-h-12 items-center border bg-input">
+            <input className="min-w-0 flex-1 bg-transparent px-3 py-3 font-mono tabular-nums outline-none" defaultValue="10.00" disabled id="stake" inputMode="decimal" type="text" />
             <span className="pr-3 text-xs font-medium text-muted-foreground">USDC</span>
           </div>
         </label>
         <button
+          aria-busy={!auth.ready}
           className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45"
-          disabled={watching}
+          disabled={unavailable}
           type="submit"
         >
-          {watching ? "Betting closed" : "Prepare prediction"}
+          {actionLabel}
         </button>
         <p className="text-center text-xs text-muted-foreground">Gas sponsored · No SOL required</p>
       </form>
