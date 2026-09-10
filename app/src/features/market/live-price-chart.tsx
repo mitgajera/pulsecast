@@ -10,7 +10,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { marketHistorySchema } from "@pulsecast/shared";
+import { marketHistorySchema, oracleSampleSchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
 import { mergeOracleHistory, mergeOracleSamples, nextFixtureSample, type OracleSample } from "./oracle-sample";
@@ -20,11 +20,12 @@ type LivePriceChartProps = {
   lockAt: number;
   openAt: number;
   resolveAt: number;
+  source: "fixture" | "magicblock";
 };
 
 const currency = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
 
-export default function LivePriceChart({ initialSamples, lockAt, openAt, resolveAt }: LivePriceChartProps) {
+export default function LivePriceChart({ initialSamples, lockAt, openAt, resolveAt, source }: LivePriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -93,11 +94,10 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const interval = window.setInterval(() => {
+
+    function queueSample(sample: OracleSample) {
       if (document.hidden) return;
-      const previous = samplesRef.current.at(-1);
-      if (!previous) return;
-      pendingRef.current = nextFixtureSample(previous, Date.now(), openAt);
+      pendingRef.current = sample;
       if (frameRef.current) return;
       frameRef.current = requestAnimationFrame(() => {
         frameRef.current = 0;
@@ -109,9 +109,31 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
         setLatest(sample);
         if (following && !reducedMotion) chartRef.current?.timeScale().scrollToRealTime();
       });
+    }
+
+    if (source === "magicblock") {
+      const stream = new EventSource(`/api/markets/${openAt}/stream`);
+      const onPrice = (event: Event) => {
+        if (!(event instanceof MessageEvent)) return;
+        try {
+          const parsed = oracleSampleSchema.safeParse(JSON.parse(String(event.data)));
+          if (parsed.success) queueSample(parsed.data);
+        } catch {
+          setFeedState("reconnecting");
+        }
+      };
+      stream.addEventListener("price", onPrice);
+      stream.onopen = () => setFeedState("live");
+      stream.onerror = () => setFeedState("reconnecting");
+      return () => stream.close();
+    }
+
+    const interval = window.setInterval(() => {
+      const previous = samplesRef.current.at(-1);
+      if (previous) queueSample(nextFixtureSample(previous, Date.now(), openAt));
     }, 200);
     return () => window.clearInterval(interval);
-  }, [following, openAt]);
+  }, [following, openAt, source]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -159,7 +181,7 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">BTC / USD</p>
           <p className="mt-1 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{latest ? currency.format(latest.price) : "—"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Fixture oracle · 200ms</p>
+          <p className="mt-1 text-xs text-muted-foreground">{source === "magicblock" ? "MagicBlock oracle · 50ms" : "Preview feed · 200ms"}</p>
         </div>
         <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">{feedState === "live" ? "Live" : "Reconnecting"}</p>
       </div>
