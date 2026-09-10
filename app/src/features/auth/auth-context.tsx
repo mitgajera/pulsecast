@@ -59,7 +59,7 @@ function PrivyAuthBridge({ children }: { children: React.ReactNode }) {
         configured: true,
         login,
         logout,
-        ready: authReady && walletsReady,
+        ready: authReady && (!authenticated || walletsReady),
       }}
     >
       {children}
