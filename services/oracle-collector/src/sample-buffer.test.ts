@@ -28,4 +28,10 @@ describe("SampleBuffer", () => {
     expect(buffer.history(150)).toEqual([sample(200)]);
     expect(buffer.latest()).toEqual(sample(200));
   });
+
+  it("caps history responses independently of storage capacity", () => {
+    const buffer = new SampleBuffer(4);
+    [1, 2, 3, 4].forEach((timestamp) => buffer.add(sample(timestamp)));
+    expect(buffer.history(0, 2)).toEqual([sample(3), sample(4)]);
+  });
 });

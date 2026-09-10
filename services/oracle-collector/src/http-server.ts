@@ -19,6 +19,7 @@ export function createCollectorServer(collector: CollectorSource, config: Collec
   const unsubscribe = collector.subscribe((sample) => broadcast(clients, sample));
 
   const server = createServer((request, response) => {
+    try {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
     applyCors(request.headers.origin, response, config.allowedOrigin);
 
@@ -67,6 +68,10 @@ export function createCollectorServer(collector: CollectorSource, config: Collec
       return;
     }
     sendJson(response, 404, { error: "Not found." });
+    } catch {
+      if (response.headersSent) response.destroy();
+      else sendJson(response, 500, { error: "Collector request failed." });
+    }
   });
 
   const heartbeat = setInterval(() => {

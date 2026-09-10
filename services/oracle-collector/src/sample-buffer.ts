@@ -25,8 +25,9 @@ export class SampleBuffer {
     return true;
   }
 
-  history(sinceMs = 0) {
-    return this.#samples.filter((sample) => sample.sourceTimestampMs >= sinceMs);
+  history(sinceMs = 0, limit = 1_200) {
+    if (!Number.isInteger(limit) || limit < 1) throw new Error("History limit must be a positive integer");
+    return this.#samples.filter((sample) => sample.sourceTimestampMs >= sinceMs).slice(-limit);
   }
 
   latest() {
