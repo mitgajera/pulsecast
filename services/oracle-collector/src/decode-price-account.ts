@@ -13,16 +13,18 @@ export function decodePriceAccount(data: Uint8Array): OracleSample {
 
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const rawPrice = view.getBigInt64(priceOffset, true);
-  const exponent = view.getInt32(exponentOffset, true);
+  const storedExponent = view.getInt32(exponentOffset, true);
   const publishTime = view.getBigInt64(publishTimeOffset, true);
   const postedSlot = view.getBigUint64(postedSlotOffset, true);
 
-  if (exponent < -18 || exponent > 18) throw new Error(`Oracle exponent is outside the supported range: ${exponent}`);
+  if (storedExponent < -18 || storedExponent > 18) throw new Error(`Oracle exponent is outside the supported range: ${storedExponent}`);
   if (publishTime < 0n || publishTime > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Oracle publish time is invalid");
   if (postedSlot > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Oracle slot exceeds JavaScript's safe integer range");
 
   return oracleSampleSchema.parse({
-    price: Number(rawPrice) * 10 ** exponent,
+    // MagicBlock's PriceUpdateV3 currently stores precision as positive 8,
+    // while the Pyth registry represents the same scale as exponent -8.
+    price: Number(rawPrice) * 10 ** -Math.abs(storedExponent),
     sourceTimestampMs: Number(publishTime) * 1_000,
     slot: Number(postedSlot),
   });
