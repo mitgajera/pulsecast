@@ -33,7 +33,11 @@ function fixturePriceAt(timestampMs: number, openAt: number) {
 
 export function mergeOracleSamples(current: OracleSample[], incoming: OracleSample) {
   const latest = current.at(-1);
-  if (latest && incoming.sourceTimestampMs <= latest.sourceTimestampMs) return current;
+  if (
+    latest &&
+    (incoming.sourceTimestampMs < latest.sourceTimestampMs ||
+      (incoming.sourceTimestampMs === latest.sourceTimestampMs && incoming.slot <= latest.slot))
+  ) return current;
   const next = [...current, incoming];
   return next.slice(-1_200);
 }

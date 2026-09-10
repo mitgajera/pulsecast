@@ -34,4 +34,11 @@ describe("oracle sample fixtures", () => {
     expect(merged).toHaveLength(history.length + 1);
     expect(merged.at(-1)).toEqual(newer);
   });
+
+  it("orders second-granular updates by slot", () => {
+    const current = [{ price: 77_100, sourceTimestampMs: 1_800_000_000_000, slot: 10 }];
+    const newerSlot = { price: 77_101, sourceTimestampMs: 1_800_000_000_000, slot: 11 };
+    expect(mergeOracleSamples(current, newerSlot)).toEqual([...current, newerSlot]);
+    expect(mergeOracleSamples(current, { ...newerSlot, slot: 9 })).toBe(current);
+  });
 });
