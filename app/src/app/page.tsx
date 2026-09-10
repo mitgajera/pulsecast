@@ -1,3 +1,4 @@
+import { AuthControl } from "@/features/auth/auth-control";
 import { selectArenaRounds, toArenaRound } from "@/features/market/arena-rounds";
 import { LiveArena } from "@/features/market/live-arena";
 import { NoLiveMarket } from "@/features/market/no-live-market";
@@ -25,7 +26,7 @@ export default async function Home() {
             <span className="flex h-6 items-end gap-0.5" aria-hidden="true"><span className="h-2 w-1 bg-primary" /><span className="h-5 w-1 bg-primary" /><span className="h-3 w-1 bg-primary" /><span className="h-6 w-1 bg-primary" /></span>
             <span className="text-base font-semibold tracking-tight">PulseCast</span>
           </a>
-          <div className="flex items-center gap-3"><span className="hidden text-xs text-muted-foreground sm:inline">Interface preview</span><button className="min-h-10 border bg-card px-4 text-sm font-medium text-muted-foreground" disabled type="button">Sign in</button></div>
+          <div className="flex items-center gap-3"><span className="hidden text-xs text-muted-foreground sm:inline">Solana Devnet</span><AuthControl /></div>
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8" id="market">
