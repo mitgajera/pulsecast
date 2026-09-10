@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
+import { PulseCastAuthProvider } from "@/features/auth/auth-context";
 
 const geistSans = Geist({
   display: "swap",
@@ -35,7 +36,9 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
     >
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <PulseCastAuthProvider appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID}>{children}</PulseCastAuthProvider>
+      </body>
     </html>
   );
 }
