@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<{ roundI
     return NextResponse.json({ error: "Round is outside the live history window." }, { status: 404 });
   }
 
-  return NextResponse.json(getMarketHistory(roundOpenAt), {
+  return NextResponse.json(await getMarketHistory(roundOpenAt), {
     headers: { "Cache-Control": "private, no-store" },
   });
 }

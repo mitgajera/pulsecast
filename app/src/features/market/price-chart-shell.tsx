@@ -14,6 +14,7 @@ type PriceChartShellProps = {
   lockAt: number;
   openAt: number;
   resolveAt: number;
+  source: "fixture" | "magicblock";
 };
 
 export function PriceChartShell(props: PriceChartShellProps) {

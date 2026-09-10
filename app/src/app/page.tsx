@@ -4,7 +4,7 @@ import { getMarketHistory } from "@/server/market-history";
 
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+export default async function Home() {
   // A live round is intentionally anchored to request time on the server.
   // eslint-disable-next-line react-hooks/purity
   const initialServerTimeMs = Date.now();
@@ -19,7 +19,7 @@ export default function Home() {
           <div className="flex items-center gap-3"><span className="hidden text-xs text-muted-foreground sm:inline">Interface preview</span><button className="min-h-10 border bg-card px-4 text-sm font-medium text-muted-foreground" disabled type="button">Sign in</button></div>
         </div>
       </header>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8" id="market"><LiveArena history={getMarketHistory(Math.floor(initialServerTimeMs / 60_000) * 60, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={createMarketFixture(initialServerTimeMs)} /></div>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8" id="market"><LiveArena history={await getMarketHistory(Math.floor(initialServerTimeMs / 60_000) * 60, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={createMarketFixture(initialServerTimeMs)} /></div>
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t px-4 py-6 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-precision markets</p><p>Preview data · Devnet only</p></footer>
     </div>
   );

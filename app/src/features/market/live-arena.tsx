@@ -33,6 +33,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             lockAt={current.lockAt}
             openAt={current.openAt}
             resolveAt={current.resolveAt}
+            source={history.source}
           />
           <section className="grid border-x border-b bg-card sm:grid-cols-3" aria-label="Round statistics">
             <Stat label="Pool" value={`${usdc.format(current.poolUsdc)} USDC`} />
