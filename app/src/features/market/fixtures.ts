@@ -1,4 +1,4 @@
-export type MarketPhase = "settled" | "betting" | "watching" | "scheduled";
+export type MarketPhase = "settled" | "betting" | "watching" | "scheduled" | "resolving" | "cancelled";
 
 export type MarketRound = {
   id: string;
