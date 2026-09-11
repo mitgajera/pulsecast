@@ -2,7 +2,11 @@
 
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
+import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import { createContext, useContext } from "react";
+
+const devnetRpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+const devnetSubscriptionsUrl = devnetRpcUrl.replace(/^http/, "ws");
 
 type AuthState = {
   address: string | null;
@@ -40,6 +44,15 @@ export function PulseCastAuthProvider({ children, appId }: { children: React.Rea
         },
         embeddedWallets: { solana: { createOnLogin: "users-without-wallets" } },
         loginMethods: ["email", "google", "passkey", "wallet"],
+        solana: {
+          rpcs: {
+            "solana:devnet": {
+              blockExplorerUrl: "https://explorer.solana.com/?cluster=devnet",
+              rpc: createSolanaRpc(devnetRpcUrl),
+              rpcSubscriptions: createSolanaRpcSubscriptions(devnetSubscriptionsUrl),
+            },
+          },
+        },
       }}
     >
       <PrivyAuthBridge>{children}</PrivyAuthBridge>
