@@ -1,7 +1,7 @@
 use std::{rc::Rc, str::FromStr};
 
 use anchor_client::{Client, Cluster, CommitmentConfig, Signer};
-use anchor_lang::{prelude::Pubkey, AccountDeserialize};
+use anchor_lang::{prelude::Pubkey, solana_program::instruction::AccountMeta, AccountDeserialize};
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use solana_keypair::read_keypair_file;
@@ -445,15 +445,46 @@ fn main() -> Result<()> {
         Command::SettleMarket { round_id } => {
             let (round, _) = round_addresses(round_id);
             let state: pulsecast::state::Round = program.account(round)?;
-            if state.prediction_count != 0 {
-                bail!("non-empty rounds must be scored and settled by the settlement worker");
+            let mut predictions: Vec<Pubkey> = program
+                .accounts::<pulsecast::state::Prediction>(vec![])?
+                .into_iter()
+                .filter_map(|(address, prediction)| (prediction.round == round).then_some(address))
+                .collect();
+            predictions.sort_unstable_by_key(|address| address.to_bytes());
+            if predictions.len() != usize::from(state.prediction_count) {
+                bail!(
+                    "found {} prediction accounts but round expects {}",
+                    predictions.len(),
+                    state.prediction_count
+                );
+            }
+            for prediction in &predictions {
+                let prediction_state: pulsecast::state::Prediction = program.account(*prediction)?;
+                if prediction_state.scored {
+                    continue;
+                }
+                let signature = program
+                    .request()
+                    .accounts(pulsecast::accounts::ScorePrediction {
+                        round,
+                        prediction: *prediction,
+                    })
+                    .args(pulsecast::instruction::ScorePrediction {})
+                    .send()?;
+                println!("scored prediction {prediction}\nsignature {signature}");
             }
             let signature = program
                 .request()
                 .accounts(pulsecast::accounts::SettleMarket { round })
+                .accounts(
+                    predictions
+                        .iter()
+                        .map(|address| AccountMeta::new(*address, false))
+                        .collect::<Vec<_>>(),
+                )
                 .args(pulsecast::instruction::SettleMarket {})
                 .send()?;
-            println!("settled empty round {round}\nsignature {signature}");
+            println!("settled round {round}\nsignature {signature}");
         }
         Command::CloseMarket { round_id } => {
             let config = config_address();
