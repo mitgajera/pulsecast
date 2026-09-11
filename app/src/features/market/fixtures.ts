@@ -9,6 +9,7 @@ export type MarketRound = {
   resolveAt: number;
   openingPrice: number;
   closingPrice?: number;
+  entryAmountUsdc: number;
   poolUsdc: number;
   predictions: number;
 };
@@ -28,6 +29,7 @@ export function createMarketFixture(nowMs: number): MarketRound[] {
       resolveAt: currentOpenAt,
       openingPrice: 112_798.42,
       closingPrice: 112_842.18,
+      entryAmountUsdc: 10,
       poolUsdc: 1_284.5,
       predictions: 186,
     },
@@ -39,6 +41,7 @@ export function createMarketFixture(nowMs: number): MarketRound[] {
       lockAt: currentOpenAt + 30,
       resolveAt: currentOpenAt + 60,
       openingPrice: fixturePrice,
+      entryAmountUsdc: 10,
       poolUsdc: 862.25,
       predictions: 124,
     },
@@ -50,6 +53,7 @@ export function createMarketFixture(nowMs: number): MarketRound[] {
       lockAt: currentOpenAt + 90,
       resolveAt: currentOpenAt + 120,
       openingPrice: fixturePrice,
+      entryAmountUsdc: 10,
       poolUsdc: 0,
       predictions: 0,
     },

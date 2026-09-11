@@ -27,6 +27,7 @@ export function toArenaRound(round: PublicRound, label: MarketRound["label"], no
     resolveAt: round.resolveAt,
     openingPrice: scaledPrice(round.startPrice),
     ...(round.actualPrice !== "0" && { closingPrice: scaledPrice(round.actualPrice) }),
+    entryAmountUsdc: atomicUsdc(round.entryAmount),
     poolUsdc: atomicUsdc(round.totalPool),
     predictions: round.predictionCount,
   };
