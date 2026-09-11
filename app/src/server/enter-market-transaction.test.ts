@@ -10,6 +10,7 @@ describe("buildEnterMarketTransaction", () => {
     const user = Keypair.generate().publicKey;
     const transaction = buildEnterMarketTransaction({
       blockhash: Keypair.generate().publicKey.toBase58(),
+      predictedPrice: 11_292_000_000_000n,
       roundId: 42n,
       sponsor,
       user,
@@ -17,12 +18,13 @@ describe("buildEnterMarketTransaction", () => {
     const decoded = Transaction.from(transaction.serialize({ requireAllSignatures: false }));
 
     expect(decoded.feePayer?.equals(sponsor.publicKey)).toBe(true);
-    expect(decoded.instructions).toHaveLength(1);
+    expect(decoded.instructions).toHaveLength(2);
     expect(decoded.instructions[0]?.programId.equals(PULSECAST_PROGRAM_ID)).toBe(true);
     expect(decoded.instructions[0]?.keys.filter((key) => key.isSigner).map((key) => key.pubkey.toBase58())).toEqual([
       user.toBase58(),
       sponsor.publicKey.toBase58(),
     ]);
+    expect(decoded.instructions[1]?.data.readBigInt64LE(8)).toBe(11_292_000_000_000n);
     expect(decoded.signatures.find(({ publicKey }) => publicKey.equals(sponsor.publicKey))?.signature).not.toBeNull();
     expect(decoded.signatures.find(({ publicKey }) => publicKey.equals(user))?.signature).toBeNull();
   });

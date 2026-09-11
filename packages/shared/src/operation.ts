@@ -14,7 +14,10 @@ const operationBaseSchema = z.object({
 });
 
 export const prepareOperationSchema = z.discriminatedUnion("action", [
-  operationBaseSchema.extend({ action: z.literal("enter_market") }),
+  operationBaseSchema.extend({
+    action: z.literal("enter_market"),
+    predictedPrice: z.string().regex(/^[1-9]\d*$/),
+  }),
   operationBaseSchema.extend({
     action: z.literal("setup_prediction"),
     predictedPrice: z.string().regex(/^\d+$/),

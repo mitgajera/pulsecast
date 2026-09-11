@@ -23,6 +23,7 @@ describe("prepareOperationSchema", () => {
     const result = prepareOperationSchema.safeParse({
       ...base,
       action: "enter_market",
+      predictedPrice: "11292000000000",
       transaction: "attacker-controlled-bytes",
     });
 

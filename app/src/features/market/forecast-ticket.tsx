@@ -36,7 +36,8 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
     if (!auth.address) return;
     setMessage("");
     try {
-      const nextSignature = await enterMarket(roundId, auth.address, setState);
+      const predictedPrice = BigInt(Math.round(Number(forecast) * 100_000_000)).toString();
+      const nextSignature = await enterMarket(roundId, auth.address, predictedPrice, setState);
       setSignature(nextSignature);
       setState("confirmed");
     } catch (error) {
@@ -110,7 +111,7 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Network fee</dt><dd>Sponsored</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Program</dt><dd>PulseCast</dd></div>
             </dl>
-            <p className="text-xs leading-5 text-muted-foreground">This signature enters the market and moves the fixed devnet USDC stake. Your private forecast is submitted in the next step.</p>
+            <p className="text-xs leading-5 text-muted-foreground">One signature enters the market, moves the fixed devnet USDC stake, and records your forecast atomically.</p>
             <div className="grid grid-cols-2 gap-2">
               <button className="min-h-11 border px-3 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setState("idle")} type="button">Back</button>
               <button className="min-h-11 bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => void confirmEntry()} type="button">Confirm entry</button>
@@ -125,7 +126,7 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
         {state === "confirmed" && (
           <div className="border border-chart-3/40 bg-chart-3/10 p-4 text-sm" role="status">
             <p className="font-medium">USDC entry confirmed</p>
-            <p className="mt-1 text-xs text-muted-foreground">The market entry is on devnet. Private forecast setup follows next.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Your entry and forecast are confirmed together on devnet.</p>
             <a className="mt-3 inline-flex min-h-10 items-center text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} rel="noreferrer" target="_blank">View transaction ↗</a>
           </div>
         )}

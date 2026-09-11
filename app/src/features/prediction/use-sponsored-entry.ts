@@ -16,7 +16,7 @@ export function useSponsoredEntry() {
   const { signAndSendTransaction } = useSignAndSendTransaction();
   const { wallets } = useWallets();
 
-  async function enterMarket(roundId: string, walletAddress: string, onProgress: (progress: EntryProgress) => void) {
+  async function enterMarket(roundId: string, walletAddress: string, predictedPrice: string, onProgress: (progress: EntryProgress) => void) {
     const wallet = wallets.find((candidate) => candidate.address === walletAddress);
     if (!wallet) throw new Error("Your Solana wallet is not ready. Reconnect and try again.");
     const accessToken = await getAccessToken();
@@ -27,6 +27,7 @@ export function useSponsoredEntry() {
       body: JSON.stringify({
         action: "enter_market",
         idempotencyKey: crypto.randomUUID(),
+        predictedPrice,
         roundId,
         wallet: walletAddress,
       }),

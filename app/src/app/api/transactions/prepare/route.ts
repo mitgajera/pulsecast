@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     const { blockhash } = await connection.getLatestBlockhash("confirmed");
     const transaction = buildEnterMarketTransaction({
       blockhash,
+      predictedPrice: BigInt(intent.predictedPrice),
       roundId: BigInt(intent.roundId),
       sponsor,
       user: new PublicKey(intent.wallet),
