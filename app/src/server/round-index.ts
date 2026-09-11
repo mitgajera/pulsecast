@@ -36,7 +36,10 @@ export async function fetchRoundIndex(serverTimeMs = Date.now()): Promise<RoundI
 }
 
 async function fetchRounds(): Promise<PublicRound[]> {
-  const rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
+  const rpcUrls = [...new Set([
+    process.env.SOLANA_RPC_URL,
+    "https://api.devnet.solana.com",
+  ].filter((value): value is string => Boolean(value)))];
   const body = JSON.stringify({
     id: 1,
     jsonrpc: "2.0",
@@ -47,20 +50,26 @@ async function fetchRounds(): Promise<PublicRound[]> {
       filters: [{ memcmp: { bytes: ROUND_ACCOUNT_DISCRIMINATOR_BASE58, offset: 0 } }],
     }],
   });
-  let response: Response | undefined;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    response = await fetch(rpcUrl, {
-      body,
-      cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (response.ok || response.status !== 429) break;
-    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  let lastStatus: number | undefined;
+  for (const rpcUrl of rpcUrls) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await fetch(rpcUrl, {
+        body,
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+        signal: AbortSignal.timeout(5_000),
+      });
+      lastStatus = response.status;
+      if (response.ok) return decodeRounds(await response.json());
+      if (response.status !== 429) break;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
   }
-  if (!response?.ok) throw new Error(`Solana RPC returned HTTP ${response?.status ?? "unknown"}`);
-  const payload: unknown = await response.json();
+  throw new Error(`Solana RPC returned HTTP ${lastStatus ?? "unknown"}`);
+}
+
+function decodeRounds(payload: unknown): PublicRound[] {
   const accounts = readProgramAccounts(payload);
   return accounts
     .map(({ account, pubkey }) => toPublicRound(pubkey, decodeRoundAccount(Buffer.from(account.data[0], "base64"))))
