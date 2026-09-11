@@ -45,13 +45,13 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
       autoSize: true,
       layout: {
         background: { color: "transparent", type: ColorType.Solid },
-        textColor: styles.getPropertyValue("--muted-foreground").trim(),
+        textColor: styles.getPropertyValue("--chart-canvas-muted").trim(),
         fontFamily: "var(--font-geist-mono)",
         fontSize: 11,
       },
       crosshair: { mode: CrosshairMode.Normal },
       grid: {
-        horzLines: { color: styles.getPropertyValue("--border").trim(), style: LineStyle.Solid },
+        horzLines: { color: styles.getPropertyValue("--chart-canvas-border").trim(), style: LineStyle.Solid },
         vertLines: { visible: false },
       },
       handleScale: { axisDoubleClickReset: true, mouseWheel: true, pinch: true },
@@ -61,17 +61,17 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
       timeScale: { borderVisible: false, rightOffset: 12, secondsVisible: true, timeVisible: true },
     });
     const series = chart.addSeries(AreaSeries, {
-      lineColor: styles.getPropertyValue("--primary").trim(),
+      lineColor: styles.getPropertyValue("--chart-canvas-primary").trim(),
       lineType: 0,
       lineWidth: 2,
-      topColor: "color-mix(in oklch, var(--primary) 18%, transparent)",
+      topColor: styles.getPropertyValue("--chart-canvas-primary-fill").trim(),
       bottomColor: "transparent",
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
     series.setData(initialSamples.map((sample) => ({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price })));
     series.createPriceLine({
       axisLabelVisible: true,
-      color: styles.getPropertyValue("--muted-foreground").trim(),
+      color: styles.getPropertyValue("--chart-canvas-muted").trim(),
       lineStyle: LineStyle.Dashed,
       lineWidth: 1,
       price: initialSamples.find((sample) => sample.sourceTimestampMs >= openAt * 1_000)?.price ?? initialSamples.at(-1)?.price ?? 0,
