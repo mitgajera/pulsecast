@@ -10,9 +10,8 @@ type MarketClockProps = {
 
 function formatRemaining(milliseconds: number) {
   const safe = Math.max(0, milliseconds);
-  const seconds = Math.floor(safe / 1_000);
-  const tenths = Math.floor((safe % 1_000) / 100);
-  return `00:${String(seconds).padStart(2, "0")}.${tenths}`;
+  const seconds = Math.ceil(safe / 1_000);
+  return `00:${String(seconds).padStart(2, "0")}`;
 }
 
 export function MarketClock({
@@ -25,13 +24,13 @@ export function MarketClock({
   useEffect(() => {
     const startedAt = performance.now();
     let frame = 0;
-    let previousTenth = -1;
+    let previousSecond = -1;
 
     const tick = () => {
       const elapsed = performance.now() - startedAt;
-      const tenth = Math.floor(elapsed / 100);
-      if (tenth !== previousTenth) {
-        previousTenth = tenth;
+      const second = Math.floor(elapsed / 1_000);
+      if (second !== previousSecond) {
+        previousSecond = second;
         setNowMs(initialServerTimeMs + elapsed);
       }
       frame = requestAnimationFrame(tick);
