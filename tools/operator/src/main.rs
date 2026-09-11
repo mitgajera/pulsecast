@@ -1,7 +1,11 @@
 use std::{rc::Rc, str::FromStr};
 
 use anchor_client::{Client, Cluster, CommitmentConfig, Signer};
-use anchor_lang::{prelude::Pubkey, solana_program::instruction::AccountMeta, AccountDeserialize};
+use anchor_lang::{
+    prelude::Pubkey,
+    solana_program::instruction::{AccountMeta, Instruction},
+    AccountDeserialize, InstructionData, ToAccountMetas,
+};
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use solana_keypair::read_keypair_file;
@@ -75,6 +79,16 @@ enum Command {
         #[arg(long, default_value_t = 60)]
         interval_seconds: i64,
     },
+    DemoEnter {
+        #[arg(long)]
+        round_id: u64,
+        #[arg(long)]
+        predicted_price: i64,
+        #[arg(long)]
+        user_keypair: String,
+        #[arg(long, default_value = ".wallets/sponsor.json")]
+        sponsor_keypair: String,
+    },
     DelegateSnapshot {
         #[arg(long)]
         round_id: u64,
@@ -115,6 +129,8 @@ enum Command {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let base_rpc = cli.rpc.clone();
+    let base_ws = cli.ws.clone();
     let payer = read_keypair_file(&cli.keypair)
         .map_err(|error| anyhow::anyhow!(error.to_string()))
         .with_context(|| format!("failed to read operator keypair {}", cli.keypair))?;
@@ -324,6 +340,84 @@ fn main() -> Result<()> {
                     "created round {round_id} at {round}\noracle snapshot {oracle_snapshot}\nopen_at {open_at}\nsignature {signature}"
                 );
             }
+        }
+        Command::DemoEnter {
+            round_id,
+            predicted_price,
+            user_keypair,
+            sponsor_keypair,
+        } => {
+            if predicted_price <= 0 {
+                bail!("predicted_price must be positive atomic USD with 8 decimals");
+            }
+            let user = read_keypair_file(&user_keypair)
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+            let sponsor = read_keypair_file(&sponsor_keypair)
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+            let sponsor_address = sponsor.pubkey();
+            let demo_client = Client::new_with_options(
+                Cluster::Custom(base_rpc, base_ws),
+                Rc::new(sponsor),
+                CommitmentConfig::confirmed(),
+            );
+            let demo_program = demo_client.program(pulsecast::ID)?;
+            let config = config_address();
+            let (round, _) = round_addresses(round_id);
+            let (prediction, _) = Pubkey::find_program_address(
+                &[
+                    pulsecast::constants::PREDICTION_SEED,
+                    round.as_ref(),
+                    user.pubkey().as_ref(),
+                ],
+                &pulsecast::ID,
+            );
+            let mint = pulsecast::constants::DEVNET_USDC_MINT;
+            let user_usdc = anchor_spl::associated_token::get_associated_token_address(
+                &user.pubkey(),
+                &mint,
+            );
+            let vault = anchor_spl::associated_token::get_associated_token_address(
+                &config,
+                &mint,
+            );
+            let enter = Instruction {
+                program_id: pulsecast::ID,
+                accounts: pulsecast::accounts::EnterMarket {
+                    config,
+                    round,
+                    prediction,
+                    usdc_mint: mint,
+                    user_usdc,
+                    vault,
+                    user: user.pubkey(),
+                    sponsor: sponsor_address,
+                    associated_token_program: anchor_spl::associated_token::ID,
+                    token_program: anchor_spl::token::ID,
+                    system_program: system_program::ID,
+                }
+                .to_account_metas(None),
+                data: pulsecast::instruction::EnterMarket {}.data(),
+            };
+            let submit = Instruction {
+                program_id: pulsecast::ID,
+                accounts: pulsecast::accounts::SubmitPrediction {
+                    prediction,
+                    session_token: None,
+                    signer: user.pubkey(),
+                }
+                .to_account_metas(None),
+                data: pulsecast::instruction::SubmitPrediction { predicted_price }.data(),
+            };
+            let signature = demo_program
+                .request()
+                .instruction(enter)
+                .instruction(submit)
+                .signer(&user)
+                .send()?;
+            println!(
+                "entered round {round_id} for {} at {predicted_price}\nprediction {prediction}\nsignature {signature}",
+                user.pubkey()
+            );
         }
         Command::DelegateSnapshot { round_id } => {
             let config = config_address();
