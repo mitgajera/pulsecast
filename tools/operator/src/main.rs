@@ -363,6 +363,8 @@ fn main() -> Result<()> {
             let demo_program = demo_client.program(pulsecast::ID)?;
             let config = config_address();
             let (round, _) = round_addresses(round_id);
+            let round_state: pulsecast::state::Round = demo_program.account(round)?;
+            wait_until_chain_time(&demo_program, round_state.open_at)?;
             let (prediction, _) = Pubkey::find_program_address(
                 &[
                     pulsecast::constants::PREDICTION_SEED,
