@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createOracleHistory, mergeOracleHistory, mergeOracleSamples, nextFixtureSample } from "./oracle-sample";
+import { createOracleHistory, mergeOracleHistory, mergeOracleSamples, nextFixtureSample, toSecondChartPoints } from "./oracle-sample";
 
 describe("oracle sample fixtures", () => {
   it("creates ordered half-second history without gaps", () => {
@@ -40,5 +40,17 @@ describe("oracle sample fixtures", () => {
     const newerSlot = { price: 77_101, sourceTimestampMs: 1_800_000_000_000, slot: 11 };
     expect(mergeOracleSamples(current, newerSlot)).toEqual([...current, newerSlot]);
     expect(mergeOracleSamples(current, { ...newerSlot, slot: 9 })).toBe(current);
+  });
+
+  it("keeps the latest price for each chart second", () => {
+    const samples = [
+      { price: 77_100, sourceTimestampMs: 1_800_000_000_100, slot: 10 },
+      { price: 77_101, sourceTimestampMs: 1_800_000_000_900, slot: 11 },
+      { price: 77_102, sourceTimestampMs: 1_800_000_001_100, slot: 12 },
+    ];
+    expect(toSecondChartPoints(samples)).toEqual([
+      { time: 1_800_000_000, value: 77_101 },
+      { time: 1_800_000_001, value: 77_102 },
+    ]);
   });
 });

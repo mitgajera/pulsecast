@@ -13,7 +13,7 @@ import {
 import { marketHistorySchema, oracleSampleSchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
-import { mergeOracleHistory, mergeOracleSamples, nextFixtureSample, type OracleSample } from "./oracle-sample";
+import { mergeOracleHistory, mergeOracleSamples, nextFixtureSample, toSecondChartPoints, type OracleSample } from "./oracle-sample";
 
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
@@ -68,7 +68,7 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
       bottomColor: "transparent",
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
-    series.setData(initialSamples.map((sample) => ({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price })));
+    series.setData(toSecondChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
     series.createPriceLine({
       axisLabelVisible: true,
       color: styles.getPropertyValue("--chart-canvas-muted").trim(),

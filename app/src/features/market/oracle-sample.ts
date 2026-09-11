@@ -2,6 +2,16 @@ import type { OracleSample } from "@pulsecast/shared";
 
 export type { OracleSample } from "@pulsecast/shared";
 
+export function toSecondChartPoints(samples: OracleSample[]) {
+  const points: Array<{ time: number; value: number }> = [];
+  for (const sample of samples) {
+    const point = { time: Math.floor(sample.sourceTimestampMs / 1_000), value: sample.price };
+    if (points.at(-1)?.time === point.time) points[points.length - 1] = point;
+    else points.push(point);
+  }
+  return points;
+}
+
 export function createOracleHistory(openAt: number, endTimeMs = openAt * 1_000): OracleSample[] {
   const startMs = (openAt - 90) * 1_000;
   const boundedEndMs = Math.min(Math.max(endTimeMs, startMs), (openAt + 70) * 1_000);
