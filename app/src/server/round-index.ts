@@ -8,33 +8,64 @@ type ProgramAccountResult = {
   pubkey: string;
 };
 
+// Round accounts only change on operator actions; clocks advance locally in the UI.
+// A longer snapshot prevents the homepage, API polling, and entry preparation from
+// independently exhausting the shared public devnet RPC quota.
+const FRESH_FOR_MS = 15_000;
+const STALE_FOR_MS = 10 * 60_000;
+let cachedRounds: { fetchedAt: number; rounds: PublicRound[] } | undefined;
+let pendingRounds: Promise<PublicRound[]> | undefined;
+
 export async function fetchRoundIndex(serverTimeMs = Date.now()): Promise<RoundIndex> {
+  const age = cachedRounds ? Date.now() - cachedRounds.fetchedAt : Number.POSITIVE_INFINITY;
+  if (cachedRounds && age < FRESH_FOR_MS) {
+    return roundIndexSchema.parse({ rounds: cachedRounds.rounds, serverTimeMs, source: "solana-devnet" });
+  }
+
+  try {
+    pendingRounds ??= fetchRounds().finally(() => { pendingRounds = undefined; });
+    const rounds = await pendingRounds;
+    cachedRounds = { fetchedAt: Date.now(), rounds };
+    return roundIndexSchema.parse({ rounds, serverTimeMs, source: "solana-devnet" });
+  } catch (error) {
+    if (cachedRounds && age < STALE_FOR_MS) {
+      return roundIndexSchema.parse({ rounds: cachedRounds.rounds, serverTimeMs, source: "solana-devnet" });
+    }
+    throw error;
+  }
+}
+
+async function fetchRounds(): Promise<PublicRound[]> {
   const rpcUrl = process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
-  const response = await fetch(rpcUrl, {
-    body: JSON.stringify({
-      id: 1,
-      jsonrpc: "2.0",
-      method: "getProgramAccounts",
-      params: [PULSECAST_PROGRAM_ID.toBase58(), {
-        commitment: "confirmed",
-        encoding: "base64",
-        filters: [{ memcmp: { bytes: ROUND_ACCOUNT_DISCRIMINATOR_BASE58, offset: 0 } }],
-      }],
-    }),
-    cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    method: "POST",
-    signal: AbortSignal.timeout(3_000),
+  const body = JSON.stringify({
+    id: 1,
+    jsonrpc: "2.0",
+    method: "getProgramAccounts",
+    params: [PULSECAST_PROGRAM_ID.toBase58(), {
+      commitment: "confirmed",
+      encoding: "base64",
+      filters: [{ memcmp: { bytes: ROUND_ACCOUNT_DISCRIMINATOR_BASE58, offset: 0 } }],
+    }],
   });
-  if (!response.ok) throw new Error(`Solana RPC returned HTTP ${response.status}`);
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = await fetch(rpcUrl, {
+      body,
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (response.ok || response.status !== 429) break;
+    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+  if (!response?.ok) throw new Error(`Solana RPC returned HTTP ${response?.status ?? "unknown"}`);
   const payload: unknown = await response.json();
   const accounts = readProgramAccounts(payload);
-  const rounds = accounts
+  return accounts
     .map(({ account, pubkey }) => toPublicRound(pubkey, decodeRoundAccount(Buffer.from(account.data[0], "base64"))))
     .sort((left, right) => left.openAt - right.openAt)
     .slice(-100);
-
-  return roundIndexSchema.parse({ rounds, serverTimeMs, source: "solana-devnet" });
 }
 
 export function toPublicRound(account: string, round: DecodedRoundAccount): PublicRound {
