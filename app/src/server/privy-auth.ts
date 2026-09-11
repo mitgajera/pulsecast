@@ -11,8 +11,8 @@ export type AuthenticatedPrivyUser = {
 export class ApiAuthError extends Error {
   constructor(
     message: string,
-    readonly status: 401 | 500,
-    readonly code: "authentication_required" | "invalid_access_token" | "auth_not_configured",
+    readonly status: 401 | 403 | 500,
+    readonly code: "authentication_required" | "invalid_access_token" | "auth_not_configured" | "wallet_not_authorized",
   ) {
     super(message);
   }
@@ -61,4 +61,20 @@ export async function verifyPrivyRequest(request: Request): Promise<Authenticate
     if (error instanceof ApiAuthError) throw error;
     throw new ApiAuthError("Your session is invalid or expired. Sign in again.", 401, "invalid_access_token");
   }
+}
+
+export async function verifyPrivyWalletRequest(request: Request, wallet: string) {
+  const session = await verifyPrivyRequest(request);
+  const user = await getPrivyClient().users()._get(session.userId);
+  const ownsWallet = user.linked_accounts.some(
+    (account) =>
+      account.type === "wallet" &&
+      "chain_type" in account &&
+      account.chain_type === "solana" &&
+      account.address === wallet,
+  );
+  if (!ownsWallet) {
+    throw new ApiAuthError("This Solana wallet is not linked to your Privy account.", 403, "wallet_not_authorized");
+  }
+  return session;
 }
