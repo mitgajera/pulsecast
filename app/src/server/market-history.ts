@@ -2,8 +2,6 @@ import "server-only";
 
 import { marketHistorySchema, type MarketHistory } from "@pulsecast/shared";
 
-import { createOracleHistory } from "@/features/market/oracle-sample";
-
 export async function getMarketHistory(roundOpenAt: number, serverTimeMs = Date.now()): Promise<MarketHistory> {
   const collectorUrl = process.env.ORACLE_COLLECTOR_URL;
   if (collectorUrl) {
@@ -14,13 +12,13 @@ export async function getMarketHistory(roundOpenAt: number, serverTimeMs = Date.
       });
       if (response.ok) return marketHistorySchema.parse(await response.json());
     } catch {
-      // The explicit fixture source below keeps degraded mode honest and usable.
+      // A missing oracle must never be presented as a live market price.
     }
   }
 
   return marketHistorySchema.parse({
     roundId: String(roundOpenAt),
-    samples: createOracleHistory(roundOpenAt, serverTimeMs),
+    samples: [],
     serverTimeMs,
     source: "fixture",
   });

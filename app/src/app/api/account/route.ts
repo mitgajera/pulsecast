@@ -33,14 +33,14 @@ export async function GET(request: Request) {
       const claimable = !prediction.claimed && (round?.status === "settled" || round?.status === "cancelled");
       return {
         account: address.toBase58(),
-        actualPrice: round && round.actualPrice > 0n ? Number(round.actualPrice) / 100 : null,
+        actualPrice: round && round.actualPrice > 0n ? Number(round.actualPrice) / 100_000_000 : null,
         claimType,
         claimable,
         claimed: prediction.claimed,
-        error: prediction.scored ? Number(prediction.error) / 100 : null,
+        error: prediction.scored ? Number(prediction.error) / 100_000_000 : null,
         entryAmountUsdc: Number(round?.entryAmount ?? 0) / 1_000_000,
         payoutUsdc: Number(prediction.payout) / 1_000_000,
-        predictedPrice: Number(prediction.predictedPrice) / 100,
+        predictedPrice: Number(prediction.predictedPrice) / 100_000_000,
         roundId: round?.id.toString() ?? null,
         status: round?.status ?? "unavailable",
         submittedAt: Number(prediction.submittedAt),
