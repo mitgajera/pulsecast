@@ -6,6 +6,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
+import { WalletAvatar } from "@/features/auth/wallet-avatar";
 import { useAccountOperation } from "./use-account-operation";
 
 type Prediction = { account: string; actualPrice: number | null; claimType: "claim_payout" | "claim_refund"; claimable: boolean; claimed: boolean; entryAmountUsdc: number; error: number | null; payoutUsdc: number; predictedPrice: number; roundId: string | null; status: string; submittedAt: number };
@@ -73,7 +74,7 @@ export function AccountDashboard() {
   }
 
   return <div className="space-y-4">
-    <section className="grid border bg-card md:grid-cols-[1fr_auto] md:items-end"><div className="p-5 sm:p-6"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Available balance</p><p className="mt-2 font-mono text-3xl font-semibold tabular-nums">{usdc.format(account.balanceUsdc)} <span className="text-sm font-medium text-muted-foreground">USDC</span></p><p className="mt-2 font-mono text-xs text-muted-foreground">{shortAddress(walletAddress)}</p></div><dl className="grid grid-cols-2 border-t md:border-l md:border-t-0"><Stat label="Predictions" value={String(account.predictions.length)} /><Stat label="Claimable" value={`${usdc.format(claimable)} USDC`} /></dl></section>
+    <section className="grid border bg-card md:grid-cols-[1fr_auto] md:items-end"><div className="flex items-center gap-4 p-5 sm:p-6"><WalletAvatar address={walletAddress} size="lg" /><div><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Available balance</p><p className="mt-2 font-mono text-3xl font-semibold tabular-nums">{usdc.format(account.balanceUsdc)} <span className="text-sm font-medium text-muted-foreground">USDC</span></p><p className="mt-2 font-mono text-xs text-muted-foreground">{shortAddress(walletAddress)}</p></div></div><dl className="grid grid-cols-2 border-t md:border-l md:border-t-0"><Stat label="Predictions" value={String(account.predictions.length)} /><Stat label="Claimable" value={`${usdc.format(claimable)} USDC`} /></dl></section>
     {message && <p className="border bg-card px-4 py-3 text-sm" role="status">{message}</p>}
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="border bg-card">

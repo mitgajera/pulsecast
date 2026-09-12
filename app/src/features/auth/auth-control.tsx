@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { usePulseCastAuth } from "./auth-context";
+import { WalletAvatar } from "./wallet-avatar";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -37,7 +38,7 @@ export function AuthControl() {
   return (
     <details className="group relative">
       <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 border bg-card px-3 font-mono text-sm transition-colors duration-100 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-        <span className="h-2 w-2 bg-chart-3" aria-hidden="true" />
+        <WalletAvatar address={address} />
         {shortAddress(address)}
       </summary>
       <div className="absolute right-0 z-20 mt-2 grid w-48 border bg-popover p-1 shadow-lg">
