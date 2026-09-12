@@ -1,4 +1,5 @@
 import { AppHeader } from "@/features/brand/app-header";
+import { AppFooter } from "@/features/brand/app-footer";
 import { selectArenaRounds, toArenaRound } from "@/features/market/arena-rounds";
 import { LiveArena } from "@/features/market/live-arena";
 import { NoLiveMarket } from "@/features/market/no-live-market";
@@ -29,7 +30,7 @@ export default async function Home() {
           <><MarketAutoRefresh resolveAt={selection.next?.openAt ?? null} /><NoLiveMarket nowMs={initialServerTimeMs} rounds={index.rounds} /></>
         )}
       </div>
-      <footer className="mx-auto flex w-full max-w-7xl shrink-0 flex-wrap justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-close precision markets</p><p>Devnet USDC · Fees sponsored</p></footer>
+      <AppFooter />
     </div>
   );
 }
