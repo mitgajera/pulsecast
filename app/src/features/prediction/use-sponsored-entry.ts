@@ -1,9 +1,8 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
-import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { preparedOperationSchema } from "@pulsecast/shared";
-import bs58 from "bs58";
 
 type EntryProgress = "preparing" | "signing";
 
@@ -13,7 +12,7 @@ function decodeBase64(value: string) {
 
 export function useSponsoredEntry() {
   const { getAccessToken } = usePrivy();
-  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const { wallets } = useWallets();
 
   async function enterMarket(roundId: string, walletAddress: string, predictedPrice: string, onProgress: (progress: EntryProgress) => void) {
@@ -45,12 +44,19 @@ export function useSponsoredEntry() {
     if (prepared.expiresAt <= Date.now()) throw new Error("The signing request expired. Try again.");
 
     onProgress("signing");
-    const { signature } = await signAndSendTransaction({
+    const { signedTransaction } = await signTransaction({
       chain: "solana:devnet",
       transaction: decodeBase64(prepared.transaction),
       wallet,
     });
-    return bs58.encode(signature);
+    const submitResponse = await fetch("/api/transactions/submit", {
+      body: JSON.stringify({ transaction: btoa(String.fromCharCode(...signedTransaction)), wallet: walletAddress }),
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      method: "POST",
+    });
+    const submitted = await submitResponse.json() as { message?: string; signature?: string };
+    if (!submitResponse.ok || !submitted.signature) throw new Error(submitted.message ?? "Transaction broadcast failed.");
+    return submitted.signature;
   }
 
   return { enterMarket };

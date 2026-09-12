@@ -37,6 +37,7 @@ export function readPrivyAuthConfig(environment: Environment = process.env) {
 
 let cachedClient: PrivyClient | undefined;
 let cachedConfigKey = "";
+const walletAuthorizations = new Map<string, { addresses: Set<string>; expiresAt: number }>();
 
 function getPrivyClient() {
   const config = readPrivyAuthConfig();
@@ -65,15 +66,16 @@ export async function verifyPrivyRequest(request: Request): Promise<Authenticate
 
 export async function verifyPrivyWalletRequest(request: Request, wallet: string) {
   const session = await verifyPrivyRequest(request);
-  const user = await getPrivyClient().users()._get(session.userId);
-  const ownsWallet = user.linked_accounts.some(
-    (account) =>
-      account.type === "wallet" &&
-      "chain_type" in account &&
-      account.chain_type === "solana" &&
-      account.address === wallet,
-  );
-  if (!ownsWallet) {
+  let authorization = walletAuthorizations.get(session.userId);
+  if (!authorization || authorization.expiresAt <= Date.now()) {
+    const user = await getPrivyClient().users()._get(session.userId);
+    const addresses = user.linked_accounts
+      .filter((account) => account.type === "wallet" && "chain_type" in account && account.chain_type === "solana")
+      .map((account) => account.address);
+    authorization = { addresses: new Set(addresses), expiresAt: Date.now() + 5 * 60_000 };
+    walletAuthorizations.set(session.userId, authorization);
+  }
+  if (!authorization.addresses.has(wallet)) {
     throw new ApiAuthError("This Solana wallet is not linked to your Privy account.", 403, "wallet_not_authorized");
   }
   return session;

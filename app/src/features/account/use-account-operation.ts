@@ -1,15 +1,14 @@
 "use client";
 
 import { usePrivy } from "@privy-io/react-auth";
-import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { preparedOperationSchema, type PrepareOperation } from "@pulsecast/shared";
-import bs58 from "bs58";
 
 const decodeBase64 = (value: string) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 
 export function useAccountOperation() {
   const { getAccessToken } = usePrivy();
-  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const { wallets } = useWallets();
 
   async function submit(intent: PrepareOperation) {
@@ -25,8 +24,15 @@ export function useAccountOperation() {
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(typeof payload === "object" && payload && "message" in payload && typeof payload.message === "string" ? payload.message : "The transaction could not be prepared.");
     const prepared = preparedOperationSchema.parse(payload);
-    const { signature } = await signAndSendTransaction({ chain: "solana:devnet", transaction: decodeBase64(prepared.transaction), wallet });
-    return bs58.encode(signature);
+    const { signedTransaction } = await signTransaction({ chain: "solana:devnet", transaction: decodeBase64(prepared.transaction), wallet });
+    const submitResponse = await fetch("/api/transactions/submit", {
+      body: JSON.stringify({ transaction: btoa(String.fromCharCode(...signedTransaction)), wallet: intent.wallet }),
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      method: "POST",
+    });
+    const submitted = await submitResponse.json() as { message?: string; signature?: string };
+    if (!submitResponse.ok || !submitted.signature) throw new Error(submitted.message ?? "Transaction broadcast failed.");
+    return submitted.signature;
   }
 
   return { submit };
