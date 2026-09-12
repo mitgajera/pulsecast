@@ -1,4 +1,4 @@
-use std::{rc::Rc, str::FromStr};
+use std::{path::Path, process::Command as ProcessCommand, rc::Rc, str::FromStr};
 
 use anchor_client::{Client, Cluster, CommitmentConfig, Signer};
 use anchor_lang::{
@@ -97,6 +97,10 @@ enum Command {
         #[arg(long, default_value = ".wallets/sponsor.json")]
         sponsor_keypair: String,
     },
+    RunLifecycle {
+        #[arg(long)]
+        round_id: u64,
+    },
     DelegateSnapshot {
         #[arg(long)]
         round_id: u64,
@@ -137,8 +141,11 @@ enum Command {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let keypair_path = cli.keypair.clone();
     let base_rpc = cli.rpc.clone();
     let base_ws = cli.ws.clone();
+    let private_rpc = cli.private_rpc.clone();
+    let private_ws = cli.private_ws.clone();
     let payer = read_keypair_file(&cli.keypair)
         .map_err(|error| anyhow::anyhow!(error.to_string()))
         .with_context(|| format!("failed to read operator keypair {}", cli.keypair))?;
@@ -498,6 +505,50 @@ fn main() -> Result<()> {
                 user.pubkey()
             );
         }
+        Command::RunLifecycle { round_id } => {
+            let executable = std::env::current_exe()?;
+            let round_id = round_id.to_string();
+            for command in ["delegate-snapshot", "capture-opening", "lock-market", "resolve-market"] {
+                run_operator_command(
+                    &executable,
+                    &keypair_path,
+                    &base_rpc,
+                    &base_ws,
+                    &private_rpc,
+                    &private_ws,
+                    &[command, "--round-id", &round_id],
+                )?;
+            }
+            let mut finalized = false;
+            for _ in 0..20 {
+                if try_operator_command(
+                    &executable,
+                    &keypair_path,
+                    &base_rpc,
+                    &base_ws,
+                    &private_rpc,
+                    &private_ws,
+                    &["finalize-market", "--round-id", &round_id],
+                )? {
+                    finalized = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+            if !finalized {
+                bail!("snapshot commit did not reach base layer before finalize timeout");
+            }
+            run_operator_command(
+                &executable,
+                &keypair_path,
+                &base_rpc,
+                &base_ws,
+                &private_rpc,
+                &private_ws,
+                &["settle-market", "--round-id", &round_id],
+            )?;
+            println!("completed lifecycle for round {round_id}");
+        }
         Command::DelegateSnapshot { round_id } => {
             let config = config_address();
             let (round, oracle_snapshot) = round_addresses(round_id);
@@ -767,4 +818,37 @@ where
         }
         std::thread::sleep(std::time::Duration::from_millis(250));
     }
+}
+
+fn run_operator_command(
+    executable: &Path,
+    keypair: &str,
+    rpc: &str,
+    ws: &str,
+    private_rpc: &str,
+    private_ws: &str,
+    args: &[&str],
+) -> Result<()> {
+    if try_operator_command(executable, keypair, rpc, ws, private_rpc, private_ws, args)? {
+        Ok(())
+    } else {
+        bail!("operator command failed: {}", args.join(" "))
+    }
+}
+
+fn try_operator_command(
+    executable: &Path,
+    keypair: &str,
+    rpc: &str,
+    ws: &str,
+    private_rpc: &str,
+    private_ws: &str,
+    args: &[&str],
+) -> Result<bool> {
+    Ok(ProcessCommand::new(executable)
+        .args(["--keypair", keypair, "--rpc", rpc, "--ws", ws])
+        .args(["--private-rpc", private_rpc, "--private-ws", private_ws])
+        .args(args)
+        .status()?
+        .success())
 }
