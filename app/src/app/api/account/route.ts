@@ -38,6 +38,7 @@ export async function GET(request: Request) {
         claimable,
         claimed: prediction.claimed,
         error: prediction.scored ? Number(prediction.error) / 100 : null,
+        entryAmountUsdc: Number(round?.entryAmount ?? 0) / 1_000_000,
         payoutUsdc: Number(prediction.payout) / 1_000_000,
         predictedPrice: Number(prediction.predictedPrice) / 100,
         roundId: round?.id.toString() ?? null,
