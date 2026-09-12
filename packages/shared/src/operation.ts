@@ -5,6 +5,7 @@ export const sponsoredActionSchema = z.enum([
   "setup_prediction",
   "claim_payout",
   "claim_refund",
+  "withdraw_usdc",
 ]);
 
 const operationBaseSchema = z.object({
@@ -24,6 +25,13 @@ export const prepareOperationSchema = z.discriminatedUnion("action", [
   }),
   operationBaseSchema.extend({ action: z.literal("claim_payout") }),
   operationBaseSchema.extend({ action: z.literal("claim_refund") }),
+  z.object({
+    action: z.literal("withdraw_usdc"),
+    amount: z.string().regex(/^[1-9]\d*$/),
+    destination: z.string().min(32).max(44),
+    idempotencyKey: z.string().uuid(),
+    wallet: z.string().min(32).max(44),
+  }),
 ]);
 
 export const operationStateSchema = z.enum([

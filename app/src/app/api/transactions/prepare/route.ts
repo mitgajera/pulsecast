@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { deriveRoundAddress } from "@pulsecast/protocol";
 import { buildEnterMarketTransaction } from "@/server/enter-market-transaction";
+import { buildClaimTransaction, buildWithdrawalTransaction } from "@/server/account-transactions";
 import { ApiAuthError, verifyPrivyWalletRequest } from "@/server/privy-auth";
 import { fetchRoundIndex } from "@/server/round-index";
 import { getSponsorWallet } from "@/server/sponsor-wallet";
@@ -18,10 +19,7 @@ export async function POST(request: Request) {
     const parsed = prepareOperationSchema.safeParse(await request.json());
     if (!parsed.success) return failure(400, "invalid_intent", "The transaction intent is invalid.");
     const intent = parsed.data;
-    if (intent.action !== "enter_market") {
-      return failure(400, "unsupported_action", "This sponsored action is not available yet.");
-    }
-
+    const nowMs = Date.now();
     const session = await verifyPrivyWalletRequest(request, intent.wallet);
     if (!consumeRateLimit(session.userId)) {
       return failure(429, "rate_limited", "Too many transaction requests. Try again in one minute.");
@@ -30,28 +28,32 @@ export async function POST(request: Request) {
     const existing = operations.get(operationKey);
     if (existing && existing.expiresAt > Date.now()) return NextResponse.json(existing);
 
-    const nowMs = Date.now();
-    const index = await fetchRoundIndex(nowMs);
-    const round = index.rounds.find((candidate) => candidate.id === intent.roundId);
-    const nowSeconds = Math.floor(nowMs / 1_000);
-    if (!round || nowSeconds < round.openAt || nowSeconds >= round.lockAt || round.status === "cancelled") {
-      return failure(409, "betting_closed", "This round is not accepting predictions.");
-    }
-    const [expectedRound] = deriveRoundAddress(BigInt(intent.roundId));
-    if (round.account !== expectedRound.toBase58()) {
-      return failure(409, "invalid_round", "The round account does not match the protocol address.");
-    }
-
     const sponsor = await getSponsorWallet();
     const connection = new Connection(process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com", "confirmed");
     const { blockhash } = await connection.getLatestBlockhash("confirmed");
-    const transaction = buildEnterMarketTransaction({
-      blockhash,
-      predictedPrice: BigInt(intent.predictedPrice),
-      roundId: BigInt(intent.roundId),
-      sponsor,
-      user: new PublicKey(intent.wallet),
-    });
+    const user = new PublicKey(intent.wallet);
+    let transaction;
+    if (intent.action === "withdraw_usdc") {
+      const destination = new PublicKey(intent.destination);
+      if (destination.equals(user)) return failure(400, "same_destination", "Enter a different destination wallet.");
+      transaction = buildWithdrawalTransaction({ amount: BigInt(intent.amount), blockhash, destination, sponsor, user });
+    } else {
+      const index = await fetchRoundIndex(nowMs);
+      const round = index.rounds.find((candidate) => candidate.id === intent.roundId);
+      const [expectedRound] = deriveRoundAddress(BigInt(intent.roundId));
+      if (!round || round.account !== expectedRound.toBase58()) return failure(409, "invalid_round", "The round account is unavailable.");
+      if (intent.action === "enter_market") {
+        const nowSeconds = Math.floor(nowMs / 1_000);
+        if (nowSeconds < round.openAt || nowSeconds >= round.lockAt || round.status === "cancelled") return failure(409, "betting_closed", "This round is not accepting predictions.");
+        transaction = buildEnterMarketTransaction({ blockhash, predictedPrice: BigInt(intent.predictedPrice), roundId: BigInt(intent.roundId), sponsor, user });
+      } else if (intent.action === "claim_payout" || intent.action === "claim_refund") {
+        if (intent.action === "claim_payout" && round.status !== "settled") return failure(409, "not_claimable", "This payout is not ready to claim.");
+        if (intent.action === "claim_refund" && round.status !== "cancelled") return failure(409, "not_refundable", "This round is not refundable.");
+        transaction = buildClaimTransaction({ blockhash, refund: intent.action === "claim_refund", roundId: BigInt(intent.roundId), sponsor, user });
+      } else {
+        return failure(400, "unsupported_action", "This sponsored action is not available yet.");
+      }
+    }
     const prepared = preparedOperationSchema.parse({
       expiresAt: nowMs + 45_000,
       operationId: crypto.randomUUID(),
