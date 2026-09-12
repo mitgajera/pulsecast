@@ -14,19 +14,18 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
   const watching = current.phase !== "betting";
 
   return (
-    <>
+    <div className="space-y-4">
       <RoundRail rounds={rounds} />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <main id={`round-${current.id}`}>
-          <section className="border-x bg-card px-4 py-5 sm:px-6" aria-labelledby="market-heading">
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <main className="overflow-hidden border bg-card" id={`round-${current.id}`}>
+          <section className="border-b px-4 py-5 sm:px-6" aria-labelledby="market-heading">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">BTC minute close · Round {current.id}</p>
-                <h1 className="mt-2 max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl" id="market-heading">Where will Bitcoin close this minute?</h1>
+                <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">BTC / USD · Round {current.id}</p>
+                <h1 className="mt-2 max-w-xl text-xl font-semibold tracking-tight sm:text-2xl" id="market-heading">Predict the minute-close price</h1>
               </div>
-              <span className="border border-chart-4/40 bg-chart-4/10 px-2.5 py-1 text-xs font-semibold text-chart-4">DEVNET</span>
+              <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
             </div>
-            <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
           </section>
           <PriceChartShell
             initialSamples={history.samples}
@@ -34,13 +33,13 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             resolveAt={current.resolveAt}
             source={history.source}
           />
-          <section className="grid border-x border-b bg-card sm:grid-cols-3" aria-label="Round statistics">
+          <section className="grid border-t bg-card sm:grid-cols-3" aria-label="Round statistics">
             <Stat label="Pool" value={`${usdc.format(current.poolUsdc)} USDC`} />
             <Stat label="Predictions" value={String(current.predictions)} />
             <Stat label="Opening price" value={`$${current.openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
           </section>
         </main>
-        <aside className="space-y-5">
+        <aside className="space-y-4 lg:sticky lg:top-20">
           <ForecastTicket roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>
@@ -54,10 +53,10 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           </section>
         </aside>
       </div>
-    </>
+    </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="border-b px-4 py-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</p><p className="mt-1 truncate font-mono text-sm font-medium tabular-nums">{value}</p></div>;
+  return <div className="border-b px-4 py-3.5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{label}</p><p className="mt-1 truncate font-mono text-sm font-medium tabular-nums">{value}</p></div>;
 }

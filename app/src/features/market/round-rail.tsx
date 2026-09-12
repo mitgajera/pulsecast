@@ -15,17 +15,17 @@ const time = new Intl.DateTimeFormat("en-US", {
 
 export function RoundRail({ rounds }: { rounds: MarketRound[] }) {
   return (
-    <nav className="grid grid-cols-3 border-x border-t bg-card" aria-label="Market rounds">
+    <nav className="grid grid-cols-3 overflow-hidden border bg-card" aria-label="Market rounds">
       {rounds.map((round) => {
         const active = round.label === "Live";
         return (
-          <a
-            className={`min-w-0 border-b px-3 py-3 transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring sm:px-4 ${
+          <div
+            aria-current={active ? "true" : undefined}
+            className={`min-w-0 border-r px-3 py-3 last:border-r-0 sm:px-4 ${
               active
-                ? "border-b-primary bg-accent"
-                : "border-r last:border-r-0 hover:bg-muted"
+                ? "bg-accent text-accent-foreground shadow-[inset_0_-2px_0_var(--primary)]"
+                : "bg-card"
             }`}
-            href={`#round-${round.id}`}
             key={round.id}
           >
             <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -38,7 +38,7 @@ export function RoundRail({ rounds }: { rounds: MarketRound[] }) {
             <span className="mt-1 hidden text-xs text-muted-foreground sm:block">
               {round.closingPrice ? price.format(round.closingPrice) : `${round.predictions} predictions`}
             </span>
-          </a>
+          </div>
         );
       })}
     </nav>

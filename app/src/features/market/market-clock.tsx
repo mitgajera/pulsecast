@@ -59,17 +59,17 @@ export function MarketClock({
   }, [lockAt, nowMs, resolveAt]);
 
   return (
-    <div className="flex items-end justify-between gap-4" aria-label="Market phase clock">
-      <div>
+    <div className="flex items-end justify-between gap-6 sm:justify-end" aria-label="Market phase clock">
+      <div className="sm:text-right">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {state.label}
         </p>
-        <p className="mt-1 font-mono text-3xl font-semibold tabular-nums tracking-tight sm:text-4xl">
+        <p className="mt-1 font-mono text-3xl font-semibold tabular-nums tracking-[-0.04em]">
           {formatRemaining(state.target - nowMs)}
         </p>
       </div>
-      <p className="mb-1 flex items-center gap-2 text-sm font-medium" aria-live="polite">
-        <span className="size-2 rounded-full bg-primary" aria-hidden="true" />
+      <p className="mb-1 flex min-h-8 items-center gap-2 border bg-background px-3 text-xs font-semibold uppercase tracking-[0.1em]" aria-live="polite">
+        <span className="size-1.5 rounded-full bg-primary" aria-hidden="true" />
         {state.phase}
       </p>
     </div>
