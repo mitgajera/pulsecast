@@ -14,8 +14,10 @@ const time = new Intl.DateTimeFormat("en-US", {
 });
 
 export function RoundRail({ rounds }: { rounds: MarketRound[] }) {
+  const columns = rounds.length === 1 ? "grid-cols-1" : rounds.length === 2 ? "grid-cols-2" : "grid-cols-3";
+
   return (
-    <nav className="grid grid-cols-3 overflow-hidden border bg-card" aria-label="Market rounds">
+    <nav className={`grid ${columns} overflow-hidden border bg-card`} aria-label="Market rounds">
       {rounds.map((round) => {
         const active = round.label === "Live";
         return (

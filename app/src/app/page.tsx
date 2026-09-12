@@ -21,7 +21,7 @@ export default async function Home() {
     selection.next && toArenaRound(selection.next, "Next", Math.floor(initialServerTimeMs / 1_000)),
   ].filter((round) => round !== null);
   return (
-    <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
+    <div className={`flex min-h-dvh flex-col ${selection.current ? "" : "lg:h-dvh lg:overflow-hidden"}`}>
       <AppHeader active="market" />
       <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-8" id="market">
         {selection.current ? (
