@@ -2,6 +2,7 @@ import { AuthControl } from "@/features/auth/auth-control";
 import { selectArenaRounds, toArenaRound } from "@/features/market/arena-rounds";
 import { LiveArena } from "@/features/market/live-arena";
 import { NoLiveMarket } from "@/features/market/no-live-market";
+import { MarketAutoRefresh } from "@/features/market/market-auto-refresh";
 import { getMarketHistory } from "@/server/market-history";
 import { fetchRoundIndex } from "@/server/round-index";
 
@@ -33,7 +34,7 @@ export default async function Home() {
         {selection.current ? (
           <LiveArena history={await getMarketHistory(selection.current.openAt, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={arenaRounds} />
         ) : (
-          <NoLiveMarket rounds={index.rounds} />
+          <><MarketAutoRefresh resolveAt={selection.next?.openAt ?? null} /><NoLiveMarket rounds={index.rounds} /></>
         )}
       </div>
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-close precision markets</p><p>Devnet USDC · Fees sponsored</p></footer>

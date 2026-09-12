@@ -42,7 +42,10 @@ export function PulseCastAuthProvider({ children, appId }: { children: React.Rea
           theme: "dark",
           walletChainType: "solana-only",
         },
-        embeddedWallets: { solana: { createOnLogin: "users-without-wallets" } },
+        embeddedWallets: {
+          showWalletUIs: false,
+          solana: { createOnLogin: "users-without-wallets" },
+        },
         loginMethods: ["email", "google", "passkey", "wallet"],
         solana: {
           rpcs: {

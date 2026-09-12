@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
 import { useSponsoredEntry } from "@/features/prediction/use-sponsored-entry";
 
-type TicketState = "idle" | "reviewing" | "preparing" | "signing" | "confirmed" | "error";
+type TicketState = "idle" | "preparing" | "signing" | "confirmed" | "error";
 
 export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: { initialPrice: number; roundId: string; stakeUsdc: number; watching: boolean }) {
   const auth = usePulseCastAuth();
+  const router = useRouter();
   const { enterMarket } = useSponsoredEntry();
   const [forecast, setForecast] = useState(initialPrice > 0 ? initialPrice.toFixed(2) : "");
   const [message, setMessage] = useState("");
@@ -16,7 +18,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
   const [state, setState] = useState<TicketState>("idle");
   const busy = state === "preparing" || state === "signing";
 
-  function reviewPrediction(event: React.FormEvent<HTMLFormElement>) {
+  function submitPrediction(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!auth.authenticated) {
       auth.login();
@@ -28,8 +30,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
       setMessage("Enter a valid BTC price above zero.");
       return;
     }
-    setMessage("");
-    setState("reviewing");
+    void confirmEntry();
   }
 
   async function confirmEntry() {
@@ -40,6 +41,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
       const nextSignature = await enterMarket(roundId, auth.address, predictedPrice, setState);
       setSignature(nextSignature);
       setState("confirmed");
+      router.refresh();
     } catch (error) {
       setState("error");
       const text = error instanceof Error ? error.message : "The transaction could not be completed.";
@@ -61,7 +63,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
             : state === "confirmed"
               ? "Entry confirmed"
               : auth.authenticated
-                ? "Review prediction"
+                ? `Place ${stakeUsdc.toFixed(2)} USDC prediction`
                 : "Sign in to predict";
 
   return (
@@ -70,7 +72,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Your call</p>
         <h2 className="mt-1 text-lg font-semibold" id="forecast-title">Predict the close</h2>
       </div>
-      <form className="space-y-5 p-5" onSubmit={reviewPrediction}>
+      <form className="space-y-5 p-5" onSubmit={submitPrediction}>
         <div>
           <label className="text-sm font-medium" htmlFor="forecast-price">BTC price at resolution</label>
           <div className="mt-2 flex min-h-12 items-center border bg-input focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
@@ -104,25 +106,9 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
           </div>
         </label>
 
-        {state === "reviewing" ? (
-          <div className="space-y-4 border bg-muted/40 p-4" role="group" aria-label="Confirm market entry">
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Forecast</dt><dd className="font-mono tabular-nums">${Number(forecast).toLocaleString("en-US", { minimumFractionDigits: 2 })}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Entry</dt><dd className="font-mono tabular-nums">{stakeUsdc.toFixed(2)} USDC</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Network fee</dt><dd>Sponsored</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Program</dt><dd>PulseCast</dd></div>
-            </dl>
-            <p className="text-xs leading-5 text-muted-foreground">One signature enters the market, moves the fixed devnet USDC stake, and records your forecast atomically.</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="min-h-11 border px-3 text-sm font-medium transition-colors duration-100 hover:bg-accent active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setState("idle")} type="button">Back</button>
-              <button className="min-h-11 bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => void confirmEntry()} type="button">Confirm entry</button>
-            </div>
-          </div>
-        ) : (
-          <button aria-busy={busy} className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0" disabled={unavailable} type="submit">
-            {actionLabel}
-          </button>
-        )}
+        <button aria-busy={busy} className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0" disabled={unavailable} type="submit">
+          {actionLabel}
+        </button>
 
         {state === "confirmed" && (
           <div className="border border-chart-3/40 bg-chart-3/10 p-4 text-sm" role="status">

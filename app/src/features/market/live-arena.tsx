@@ -3,6 +3,7 @@ import type { MarketHistory } from "@pulsecast/shared";
 import { ForecastTicket } from "./forecast-ticket";
 import type { MarketRound } from "./fixtures";
 import { MarketClock } from "./market-clock";
+import { MarketAutoRefresh } from "./market-auto-refresh";
 import { PriceChartShell } from "./price-chart-shell";
 import { RoundRail } from "./round-rail";
 
@@ -15,6 +16,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
 
   return (
     <div className="space-y-4">
+      <MarketAutoRefresh resolveAt={current.resolveAt} />
       <RoundRail rounds={rounds} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="overflow-hidden border bg-card" id={`round-${current.id}`}>
@@ -40,7 +42,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           </section>
         </main>
         <aside className="space-y-4 lg:sticky lg:top-20">
-          <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
+          <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} key={current.id} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>
             <h2 className="mt-1 font-semibold" id="precision-title">Precision beats direction</h2>
