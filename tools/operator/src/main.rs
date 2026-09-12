@@ -389,14 +389,9 @@ fn main() -> Result<()> {
                 &pulsecast::ID,
             );
             let mint = pulsecast::constants::DEVNET_USDC_MINT;
-            let user_usdc = anchor_spl::associated_token::get_associated_token_address(
-                &user.pubkey(),
-                &mint,
-            );
-            let vault = anchor_spl::associated_token::get_associated_token_address(
-                &config,
-                &mint,
-            );
+            let user_usdc =
+                anchor_spl::associated_token::get_associated_token_address(&user.pubkey(), &mint);
+            let vault = anchor_spl::associated_token::get_associated_token_address(&config, &mint);
             let enter = Instruction {
                 program_id: pulsecast::ID,
                 accounts: pulsecast::accounts::EnterMarket {
@@ -464,10 +459,8 @@ fn main() -> Result<()> {
                 &pulsecast::ID,
             );
             let mint = pulsecast::constants::DEVNET_USDC_MINT;
-            let user_usdc = anchor_spl::associated_token::get_associated_token_address(
-                &user.pubkey(),
-                &mint,
-            );
+            let user_usdc =
+                anchor_spl::associated_token::get_associated_token_address(&user.pubkey(), &mint);
             let vault = anchor_spl::associated_token::get_associated_token_address(&config, &mint);
             let mut request = claim_program.request().signer(&user);
             request = match round_state.status {
@@ -508,7 +501,37 @@ fn main() -> Result<()> {
         Command::RunLifecycle { round_id } => {
             let executable = std::env::current_exe()?;
             let round_id = round_id.to_string();
-            for command in ["delegate-snapshot", "capture-opening", "lock-market", "resolve-market"] {
+            run_operator_command(
+                &executable,
+                &keypair_path,
+                &base_rpc,
+                &base_ws,
+                &private_rpc,
+                &private_ws,
+                &["delegate-snapshot", "--round-id", &round_id],
+            )?;
+            let mut captured = false;
+            for _ in 0..20 {
+                if try_operator_command(
+                    &executable,
+                    &keypair_path,
+                    &base_rpc,
+                    &base_ws,
+                    &private_rpc,
+                    &private_ws,
+                    &["capture-opening", "--round-id", &round_id],
+                )? {
+                    captured = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            if !captured {
+                bail!(
+                    "delegated snapshot did not become writable before the opening-price deadline"
+                );
+            }
+            for command in ["lock-market", "resolve-market"] {
                 run_operator_command(
                     &executable,
                     &keypair_path,
@@ -683,7 +706,8 @@ fn main() -> Result<()> {
                 );
             }
             for prediction in &predictions {
-                let prediction_state: pulsecast::state::Prediction = program.account(*prediction)?;
+                let prediction_state: pulsecast::state::Prediction =
+                    program.account(*prediction)?;
                 if prediction_state.scored {
                     continue;
                 }
