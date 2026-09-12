@@ -21,7 +21,7 @@ export function AuthControl() {
   }
 
   if (!authenticated) {
-    return <button className="min-h-10 border bg-card px-4 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={login} type="button">Sign in</button>;
+    return <button className="min-h-10 border bg-card px-4 text-sm font-medium transition-colors duration-100 hover:bg-accent active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={login} type="button">Sign in</button>;
   }
 
   if (!address) {
@@ -36,7 +36,7 @@ export function AuthControl() {
 
   return (
     <details className="group relative">
-      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 border bg-card px-3 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 border bg-card px-3 font-mono text-sm transition-colors duration-100 hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
         <span className="h-2 w-2 bg-chart-3" aria-hidden="true" />
         {shortAddress(address)}
       </summary>

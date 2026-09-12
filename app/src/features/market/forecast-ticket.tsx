@@ -7,10 +7,10 @@ import { useSponsoredEntry } from "@/features/prediction/use-sponsored-entry";
 
 type TicketState = "idle" | "reviewing" | "preparing" | "signing" | "confirmed" | "error";
 
-export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: string; stakeUsdc: number; watching: boolean }) {
+export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: { initialPrice: number; roundId: string; stakeUsdc: number; watching: boolean }) {
   const auth = usePulseCastAuth();
   const { enterMarket } = useSponsoredEntry();
-  const [forecast, setForecast] = useState("112920.00");
+  const [forecast, setForecast] = useState(initialPrice > 0 ? initialPrice.toFixed(2) : "");
   const [message, setMessage] = useState("");
   const [signature, setSignature] = useState("");
   const [state, setState] = useState<TicketState>("idle");
@@ -85,6 +85,7 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
               inputMode="decimal"
               onChange={(event) => { setForecast(event.target.value); setState("idle"); }}
               spellCheck={false}
+              placeholder="0.00"
               type="text"
               value={forecast}
             />
@@ -97,7 +98,7 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
         </div>
         <label className="block text-sm font-medium" htmlFor="stake">
           Stake
-          <div className="mt-2 flex min-h-12 items-center border bg-input">
+          <div className="mt-2 flex min-h-12 items-center border bg-input focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
             <input className="min-w-0 flex-1 bg-transparent px-3 py-3 font-mono tabular-nums outline-none" readOnly id="stake" inputMode="decimal" type="text" value={stakeUsdc.toFixed(2)} />
             <span className="pr-3 text-xs font-medium text-muted-foreground">USDC</span>
           </div>
@@ -113,19 +114,19 @@ export function ForecastTicket({ roundId, stakeUsdc, watching }: { roundId: stri
             </dl>
             <p className="text-xs leading-5 text-muted-foreground">One signature enters the market, moves the fixed devnet USDC stake, and records your forecast atomically.</p>
             <div className="grid grid-cols-2 gap-2">
-              <button className="min-h-11 border px-3 text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setState("idle")} type="button">Back</button>
-              <button className="min-h-11 bg-primary px-3 text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => void confirmEntry()} type="button">Confirm entry</button>
+              <button className="min-h-11 border px-3 text-sm font-medium transition-colors duration-100 hover:bg-accent active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setState("idle")} type="button">Back</button>
+              <button className="min-h-11 bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => void confirmEntry()} type="button">Confirm entry</button>
             </div>
           </div>
         ) : (
-          <button aria-busy={busy} className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45" disabled={unavailable} type="submit">
+          <button aria-busy={busy} className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0" disabled={unavailable} type="submit">
             {actionLabel}
           </button>
         )}
 
         {state === "confirmed" && (
           <div className="border border-chart-3/40 bg-chart-3/10 p-4 text-sm" role="status">
-            <p className="font-medium">USDC entry confirmed</p>
+            <p className="font-medium">Prediction confirmed</p>
             <p className="mt-1 text-xs text-muted-foreground">Your entry and forecast are confirmed together on devnet.</p>
             <a className="mt-3 inline-flex min-h-10 items-center text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} rel="noreferrer" target="_blank">View transaction ↗</a>
           </div>

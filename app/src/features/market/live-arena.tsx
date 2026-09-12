@@ -40,7 +40,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           </section>
         </main>
         <aside className="space-y-4 lg:sticky lg:top-20">
-          <ForecastTicket roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
+          <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>
             <h2 className="mt-1 font-semibold" id="precision-title">Precision beats direction</h2>
