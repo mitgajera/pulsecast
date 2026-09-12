@@ -6,6 +6,7 @@ import { MarketClock } from "./market-clock";
 import { MarketAutoRefresh } from "./market-auto-refresh";
 import { PriceChartShell } from "./price-chart-shell";
 import { RoundRail } from "./round-rail";
+import { RoundResultDialog } from "./round-result-dialog";
 
 const usdc = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency", minimumFractionDigits: 2 });
 
@@ -13,10 +14,12 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
   const current = rounds.find((round) => round.label === "Live");
   if (!current) return null;
   const watching = current.phase !== "betting";
+  const previous = rounds.find((round) => round.label === "Previous");
 
   return (
     <div className="space-y-4">
       <MarketAutoRefresh resolveAt={current.resolveAt} />
+      <RoundResultDialog roundId={previous?.id ?? null} />
       <RoundRail rounds={rounds} />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <main className="overflow-hidden border bg-card" id={`round-${current.id}`}>
