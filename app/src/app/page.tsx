@@ -20,16 +20,16 @@ export default async function Home() {
     selection.next && toArenaRound(selection.next, "Next", Math.floor(initialServerTimeMs / 1_000)),
   ].filter((round) => round !== null);
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <AppHeader active="market" />
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8" id="market">
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4 lg:px-8" id="market">
         {selection.current ? (
           <LiveArena history={await getMarketHistory(selection.current.openAt, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={arenaRounds} />
         ) : (
           <><MarketAutoRefresh resolveAt={selection.next?.openAt ?? null} /><NoLiveMarket nowMs={initialServerTimeMs} rounds={index.rounds} /></>
         )}
       </div>
-      <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-close precision markets</p><p>Devnet USDC · Fees sponsored</p></footer>
+      <footer className="mx-auto flex w-full max-w-7xl shrink-0 flex-wrap justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-close precision markets</p><p>Devnet USDC · Fees sponsored</p></footer>
     </div>
   );
 }
