@@ -63,14 +63,14 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
             : state === "confirmed"
               ? "Entry confirmed"
               : auth.authenticated
-                ? `Place ${stakeUsdc.toFixed(2)} USDC prediction`
+                ? `Lock prediction · ${stakeUsdc.toFixed(2)} USDC`
                 : "Sign in to predict";
 
   return (
     <section className="border bg-card" aria-labelledby="forecast-title">
       <div className="border-b px-5 py-4">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Your call</p>
-        <h2 className="mt-1 text-lg font-semibold" id="forecast-title">Predict the close</h2>
+        <h2 className="mt-1 text-lg font-semibold" id="forecast-title">Lock your prediction</h2>
       </div>
       <form className="space-y-5 p-5" onSubmit={submitPrediction}>
         <div>
@@ -81,7 +81,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
               aria-describedby="forecast-help forecast-message"
               aria-invalid={state === "error" ? true : undefined}
               autoComplete="off"
-              className="min-w-0 flex-1 bg-transparent px-2 py-3 font-mono text-lg tabular-nums outline-none"
+              className="min-w-0 flex-1 bg-transparent px-2 py-3 font-mono text-xl font-medium tabular-nums outline-none"
               disabled={watching || busy || state === "confirmed"}
               id="forecast-price"
               inputMode="decimal"
@@ -98,13 +98,10 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
             {watching ? "Predictions are locked for this round." : message}
           </p>
         </div>
-        <label className="block text-sm font-medium" htmlFor="stake">
-          Stake
-          <div className="mt-2 flex min-h-12 items-center border bg-input focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring">
-            <input className="min-w-0 flex-1 bg-transparent px-3 py-3 font-mono tabular-nums outline-none" readOnly id="stake" inputMode="decimal" type="text" value={stakeUsdc.toFixed(2)} />
-            <span className="pr-3 text-xs font-medium text-muted-foreground">USDC</span>
-          </div>
-        </label>
+        <dl className="divide-y border bg-background/40 text-sm">
+          <div className="flex min-h-11 items-center justify-between gap-4 px-3"><dt className="text-muted-foreground">Entry amount</dt><dd className="font-mono font-medium tabular-nums">{stakeUsdc.toFixed(2)} USDC</dd></div>
+          <div className="flex min-h-11 items-center justify-between gap-4 px-3"><dt className="text-muted-foreground">Network fee</dt><dd className="font-medium text-chart-3">Sponsored</dd></div>
+        </dl>
 
         <button aria-busy={busy} className="min-h-12 w-full bg-primary px-4 font-semibold text-primary-foreground transition-opacity duration-100 hover:opacity-90 active:translate-y-px focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-45 disabled:active:translate-y-0" disabled={unavailable} type="submit">
           {actionLabel}
@@ -117,7 +114,7 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
             <a className="mt-3 inline-flex min-h-10 items-center text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} rel="noreferrer" target="_blank">View transaction ↗</a>
           </div>
         )}
-        <p className="text-center text-xs text-muted-foreground">Gas sponsored · No SOL required</p>
+        <p className="text-center text-xs leading-5 text-muted-foreground">Private until resolution · No SOL required</p>
       </form>
     </section>
   );

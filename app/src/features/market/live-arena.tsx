@@ -30,7 +30,8 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">BTC / USD · Round {current.id}</p>
-                <h1 className="mt-2 max-w-xl text-xl font-semibold tracking-tight sm:text-2xl" id="market-heading">Predict the minute-close price</h1>
+                <h1 className="mt-2 max-w-xl text-xl font-semibold tracking-tight sm:text-2xl" id="market-heading">Where will BTC close this minute?</h1>
+                <p className="mt-2 text-xs text-muted-foreground">30 seconds to predict · 30 seconds to watch · settles at the minute boundary</p>
               </div>
               <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
             </div>
