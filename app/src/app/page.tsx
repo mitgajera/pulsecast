@@ -1,5 +1,4 @@
-import { AuthControl } from "@/features/auth/auth-control";
-import { BrandMark } from "@/features/brand/brand-mark";
+import { AppHeader } from "@/features/brand/app-header";
 import { selectArenaRounds, toArenaRound } from "@/features/market/arena-rounds";
 import { LiveArena } from "@/features/market/live-arena";
 import { NoLiveMarket } from "@/features/market/no-live-market";
@@ -22,15 +21,7 @@ export default async function Home() {
   ].filter((round) => round !== null);
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto flex min-h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a className="flex min-h-11 items-center gap-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring" href="#market">
-            <BrandMark />
-            <span><span className="block text-sm font-semibold tracking-tight">PulseCast</span><span className="hidden text-[11px] text-muted-foreground sm:block">Precision markets</span></span>
-          </a>
-          <div className="flex items-center gap-2 sm:gap-3"><span className="hidden min-h-8 items-center border px-2.5 font-mono text-[11px] uppercase tracking-[0.1em] text-chart-4 sm:flex"><span className="mr-2 size-1.5 rounded-full bg-chart-4" aria-hidden="true" />Devnet</span><AuthControl /></div>
-        </div>
-      </header>
+      <AppHeader active="market" />
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8" id="market">
         {selection.current ? (
           <LiveArena history={await getMarketHistory(selection.current.openAt, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={arenaRounds} />
