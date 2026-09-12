@@ -30,7 +30,6 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           </section>
           <PriceChartShell
             initialSamples={history.samples}
-            lockAt={current.lockAt}
             openAt={current.openAt}
             resolveAt={current.resolveAt}
             source={history.source}

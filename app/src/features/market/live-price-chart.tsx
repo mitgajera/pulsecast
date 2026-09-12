@@ -5,7 +5,7 @@ import {
   ColorType,
   CrosshairMode,
   createChart,
-  LineStyle,
+  LineType,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
@@ -17,7 +17,6 @@ import { mergeOracleHistory, mergeOracleSamples, nextFixtureSample, toSecondChar
 
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
-  lockAt: number;
   openAt: number;
   resolveAt: number;
   source: "fixture" | "magicblock";
@@ -25,7 +24,7 @@ type LivePriceChartProps = {
 
 const currency = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
 
-export default function LivePriceChart({ initialSamples, lockAt, openAt, resolveAt, source }: LivePriceChartProps) {
+export default function LivePriceChart({ initialSamples, openAt, resolveAt, source }: LivePriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -44,14 +43,15 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
     const chart = createChart(container, {
       autoSize: true,
       layout: {
+        attributionLogo: false,
         background: { color: "transparent", type: ColorType.Solid },
         textColor: styles.getPropertyValue("--chart-canvas-muted").trim(),
         fontFamily: "var(--font-geist-mono)",
         fontSize: 11,
       },
-      crosshair: { mode: CrosshairMode.Normal },
+      crosshair: { mode: CrosshairMode.Hidden },
       grid: {
-        horzLines: { color: styles.getPropertyValue("--chart-canvas-border").trim(), style: LineStyle.Solid },
+        horzLines: { visible: false },
         vertLines: { visible: false },
       },
       handleScale: { axisDoubleClickReset: true, mouseWheel: true, pinch: true },
@@ -62,21 +62,14 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
     });
     const series = chart.addSeries(AreaSeries, {
       lineColor: styles.getPropertyValue("--chart-canvas-primary").trim(),
-      lineType: 0,
+      lineType: LineType.Curved,
       lineWidth: 2,
+      priceLineVisible: false,
       topColor: styles.getPropertyValue("--chart-canvas-primary-fill").trim(),
       bottomColor: "transparent",
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
     series.setData(toSecondChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
-    series.createPriceLine({
-      axisLabelVisible: true,
-      color: styles.getPropertyValue("--chart-canvas-muted").trim(),
-      lineStyle: LineStyle.Dashed,
-      lineWidth: 1,
-      price: initialSamples.find((sample) => sample.sourceTimestampMs >= openAt * 1_000)?.price ?? initialSamples.at(-1)?.price ?? 0,
-      title: "OPEN",
-    });
     chart.timeScale().setVisibleRange({ from: (openAt - 90) as UTCTimestamp, to: (resolveAt + 20) as UTCTimestamp });
     chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
       setFollowing(chart.timeScale().scrollPosition() >= -14);
@@ -186,8 +179,6 @@ export default function LivePriceChart({ initialSamples, lockAt, openAt, resolve
         <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">{feedState === "live" ? "Live" : "Reconnecting"}</p>
       </div>
       <div className="absolute inset-0" ref={containerRef} aria-label="Interactive Bitcoin price chart" role="img" />
-      <div className="pointer-events-none absolute inset-y-0 z-10 border-l border-dashed border-muted-foreground/60" style={{ left: `${((lockAt - (openAt - 90)) / (resolveAt + 20 - (openAt - 90))) * 100}%` }}><span className="absolute bottom-3 -translate-x-1/2 bg-card px-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Lock</span></div>
-      <div className="pointer-events-none absolute inset-y-0 z-10 border-l border-primary/80" style={{ left: `${((resolveAt - (openAt - 90)) / (resolveAt + 20 - (openAt - 90))) * 100}%` }}><span className="absolute bottom-3 -translate-x-1/2 bg-card px-2 font-mono text-[10px] uppercase tracking-wider text-primary">Resolve</span></div>
       {!following && <button className="absolute bottom-10 right-16 z-20 min-h-10 border bg-card px-3 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={returnToLive} type="button">Return to live</button>}
       <p className="sr-only" aria-live="off">Current price {latest ? currency.format(latest.price) : "unavailable"}. Opening, betting lock, and resolution markers are shown.</p>
     </div>
