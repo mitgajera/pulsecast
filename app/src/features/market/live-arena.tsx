@@ -15,6 +15,9 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
   if (!current) return null;
   const watching = current.phase !== "betting";
   const previous = rounds.find((round) => round.label === "Previous");
+  const openingPrice = current.openingPrice > 0
+    ? current.openingPrice
+    : history.samples.find((sample) => sample.sourceTimestampMs >= current.openAt * 1_000)?.price ?? null;
 
   return (
     <div className="space-y-4">
@@ -41,7 +44,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           <section className="grid border-t bg-card sm:grid-cols-3" aria-label="Round statistics">
             <Stat label="Pool" value={`${usdc.format(current.poolUsdc)} USDC`} />
             <Stat label="Predictions" value={String(current.predictions)} />
-            <Stat label="Opening price" value={`$${current.openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
+            <Stat label="Opening price" value={openingPrice === null ? "Awaiting capture" : `$${openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
           </section>
         </main>
         <aside className="space-y-4 lg:sticky lg:top-20">

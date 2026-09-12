@@ -69,8 +69,10 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       bottomColor: "transparent",
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
+    series.priceScale().applyOptions({ autoScale: true });
     series.setData(toSecondChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
-    chart.timeScale().setVisibleRange({ from: (openAt - 90) as UTCTimestamp, to: (resolveAt + 20) as UTCTimestamp });
+    const latestTime = Math.floor((initialSamples.at(-1)?.sourceTimestampMs ?? openAt * 1_000) / 1_000);
+    chart.timeScale().setVisibleRange({ from: (latestTime - 90) as UTCTimestamp, to: (latestTime + 5) as UTCTimestamp });
     chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
       setFollowing(chart.timeScale().scrollPosition() >= -14);
     });
@@ -86,8 +88,6 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
   }, [initialSamples, openAt, resolveAt]);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     function queueSample(sample: OracleSample) {
       if (document.hidden) return;
       pendingRef.current = sample;
@@ -100,7 +100,10 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
         samplesRef.current = mergeOracleSamples(samplesRef.current, sample);
         seriesRef.current?.update({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price });
         setLatest(sample);
-        if (following && !reducedMotion) chartRef.current?.timeScale().scrollToRealTime();
+        if (following) {
+          const time = Math.floor(sample.sourceTimestampMs / 1_000);
+          chartRef.current?.timeScale().setVisibleRange({ from: (time - 90) as UTCTimestamp, to: (time + 5) as UTCTimestamp });
+        }
       });
     }
 

@@ -31,7 +31,7 @@ export function RoundResultDialog({ roundId }: { roundId: string | null }) {
       } catch { /* The next poll retries transient RPC failures. */ }
     }
     void check();
-    const interval = window.setInterval(() => void check(), 4_000);
+    const interval = window.setInterval(() => void check(), 1_000);
     return () => { stopped = true; window.clearInterval(interval); };
   }, [auth.address, auth.authenticated, getAccessToken, roundId]);
 

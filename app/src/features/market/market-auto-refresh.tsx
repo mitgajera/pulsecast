@@ -8,8 +8,8 @@ export function MarketAutoRefresh({ resolveAt }: { resolveAt: number | null }) {
 
   useEffect(() => {
     const refresh = () => router.refresh();
-    const heartbeat = window.setInterval(refresh, 10_000);
-    const boundaryDelay = resolveAt === null ? null : Math.max(0, resolveAt * 1_000 - Date.now() + 500);
+    const heartbeat = window.setInterval(refresh, 2_000);
+    const boundaryDelay = resolveAt === null ? null : Math.max(0, resolveAt * 1_000 - Date.now() + 100);
     const boundary = boundaryDelay === null ? null : window.setTimeout(refresh, boundaryDelay);
     return () => {
       window.clearInterval(heartbeat);
