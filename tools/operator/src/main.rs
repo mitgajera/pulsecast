@@ -89,6 +89,14 @@ enum Command {
         #[arg(long, default_value = ".wallets/sponsor.json")]
         sponsor_keypair: String,
     },
+    DemoClaim {
+        #[arg(long)]
+        round_id: u64,
+        #[arg(long)]
+        user_keypair: String,
+        #[arg(long, default_value = ".wallets/sponsor.json")]
+        sponsor_keypair: String,
+    },
     DelegateSnapshot {
         #[arg(long)]
         round_id: u64,
@@ -418,6 +426,75 @@ fn main() -> Result<()> {
                 .send()?;
             println!(
                 "entered round {round_id} for {} at {predicted_price}\nprediction {prediction}\nsignature {signature}",
+                user.pubkey()
+            );
+        }
+        Command::DemoClaim {
+            round_id,
+            user_keypair,
+            sponsor_keypair,
+        } => {
+            let user = read_keypair_file(&user_keypair)
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+            let sponsor = read_keypair_file(&sponsor_keypair)
+                .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+            let sponsor_address = sponsor.pubkey();
+            let claim_client = Client::new_with_options(
+                Cluster::Custom(base_rpc, base_ws),
+                Rc::new(sponsor),
+                CommitmentConfig::confirmed(),
+            );
+            let claim_program = claim_client.program(pulsecast::ID)?;
+            let config = config_address();
+            let (round, _) = round_addresses(round_id);
+            let round_state: pulsecast::state::Round = claim_program.account(round)?;
+            let (prediction, _) = Pubkey::find_program_address(
+                &[
+                    pulsecast::constants::PREDICTION_SEED,
+                    round.as_ref(),
+                    user.pubkey().as_ref(),
+                ],
+                &pulsecast::ID,
+            );
+            let mint = pulsecast::constants::DEVNET_USDC_MINT;
+            let user_usdc = anchor_spl::associated_token::get_associated_token_address(
+                &user.pubkey(),
+                &mint,
+            );
+            let vault = anchor_spl::associated_token::get_associated_token_address(&config, &mint);
+            let mut request = claim_program.request().signer(&user);
+            request = match round_state.status {
+                pulsecast::state::RoundStatus::Settled => request
+                    .accounts(pulsecast::accounts::ClaimPayout {
+                        config,
+                        round,
+                        prediction,
+                        usdc_mint: mint,
+                        vault,
+                        user_usdc,
+                        user: user.pubkey(),
+                        sponsor: sponsor_address,
+                        token_program: anchor_spl::token::ID,
+                    })
+                    .args(pulsecast::instruction::ClaimPayout {}),
+                pulsecast::state::RoundStatus::Cancelled => request
+                    .accounts(pulsecast::accounts::ClaimRefund {
+                        config,
+                        round,
+                        prediction,
+                        usdc_mint: mint,
+                        vault,
+                        user_usdc,
+                        user: user.pubkey(),
+                        sponsor: sponsor_address,
+                        token_program: anchor_spl::token::ID,
+                    })
+                    .args(pulsecast::instruction::ClaimRefund {}),
+                status => bail!("round is not claimable: {status:?}"),
+            };
+            let signature = request.send()?;
+            println!(
+                "claimed round {round_id} for {}\nsignature {signature}",
                 user.pubkey()
             );
         }
