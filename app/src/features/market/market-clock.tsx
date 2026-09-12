@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type MarketClockProps = {
   initialServerTimeMs: number;
@@ -19,6 +20,7 @@ export function MarketClock({
   lockAt,
   resolveAt,
 }: MarketClockProps) {
+  const router = useRouter();
   const [nowMs, setNowMs] = useState(initialServerTimeMs);
 
   useEffect(() => {
@@ -39,6 +41,12 @@ export function MarketClock({
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [initialServerTimeMs]);
+
+  useEffect(() => {
+    const delay = Math.max(0, resolveAt * 1_000 - initialServerTimeMs + 1_500);
+    const refresh = window.setTimeout(() => router.refresh(), delay);
+    return () => window.clearTimeout(refresh);
+  }, [initialServerTimeMs, resolveAt, router]);
 
   const state = useMemo(() => {
     if (nowMs < lockAt * 1_000) {
