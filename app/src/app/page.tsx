@@ -26,7 +26,7 @@ export default async function Home() {
         {selection.current ? (
           <LiveArena history={await getMarketHistory(selection.current.openAt, initialServerTimeMs)} initialServerTimeMs={initialServerTimeMs} rounds={arenaRounds} />
         ) : (
-          <><MarketAutoRefresh resolveAt={selection.next?.openAt ?? null} /><NoLiveMarket rounds={index.rounds} /></>
+          <><MarketAutoRefresh resolveAt={selection.next?.openAt ?? null} /><NoLiveMarket nowMs={initialServerTimeMs} rounds={index.rounds} /></>
         )}
       </div>
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-3 border-t px-4 py-5 text-xs text-muted-foreground sm:px-6 lg:px-8"><p>PulseCast · Minute-close precision markets</p><p>Devnet USDC · Fees sponsored</p></footer>
