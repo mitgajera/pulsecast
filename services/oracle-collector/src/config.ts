@@ -14,7 +14,7 @@ export function loadCollectorConfig(environment: NodeJS.ProcessEnv = process.env
     allowedOrigin: environment.PULSECAST_APP_ORIGIN ?? "http://localhost:3000",
     feedAccount: environment.MAGICBLOCK_BTC_FEED_ACCOUNT ?? BTC_USD_FEED_ACCOUNT,
     httpRpcUrl: environment.MAGICBLOCK_HTTP_RPC_URL ?? "https://devnet-as.magicblock.app",
-    port: parsePort(environment.ORACLE_COLLECTOR_PORT),
+    port: parsePort(environment.PORT ?? environment.ORACLE_COLLECTOR_PORT),
     wsRpcUrl: environment.MAGICBLOCK_WS_RPC_URL ?? "wss://devnet-as.magicblock.app",
   };
 }

@@ -7,14 +7,19 @@ const collector = new OracleCollector(config);
 const server = createCollectorServer(collector, config);
 
 await collector.start();
-server.listen(config.port, "127.0.0.1", () => {
+server.listen(config.port, "0.0.0.0", () => {
   console.info(`PulseCast oracle collector listening at ${serverAddress(server)}`);
 });
 
-async function shutdown() {
+let stopping = false;
+async function shutdown(signal: NodeJS.Signals) {
+  if (stopping) return;
+  stopping = true;
+  console.info(`Received ${signal}; stopping oracle collector`);
   server.close();
+  server.closeAllConnections();
   await collector.stop();
 }
 
-process.once("SIGINT", () => void shutdown());
-process.once("SIGTERM", () => void shutdown());
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
