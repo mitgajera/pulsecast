@@ -18,7 +18,6 @@ import { mergeOracleHistory, mergeOracleSamples, toChartPoints, type OracleSampl
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
   openAt: number;
-  resolveAt: number;
   source: "fixture" | "magicblock";
 };
 
@@ -30,13 +29,16 @@ function chartTime(sourceTimestampMs: number) {
   return (sourceTimestampMs / 1_000) as UTCTimestamp;
 }
 
-export default function LivePriceChart({ initialSamples, openAt, resolveAt, source }: LivePriceChartProps) {
+export default function LivePriceChart({ initialSamples, openAt, source }: LivePriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const bootstrapSamplesRef = useRef(initialSamples);
   const samplesRef = useRef(initialSamples);
   const pendingRef = useRef<OracleSample | null>(null);
   const frameRef = useRef(0);
+  const followingRef = useRef(true);
+  const lastViewportUpdateRef = useRef(0);
   const [latest, setLatest] = useState(initialSamples.at(-1));
   const [following, setFollowing] = useState(true);
   const [feedState, setFeedState] = useState<"live" | "reconnecting">("live");
@@ -87,14 +89,17 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
     series.priceScale().applyOptions({ autoScale: true });
-    series.setData(toChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
-    const latestTime = (initialSamples.at(-1)?.sourceTimestampMs ?? openAt * 1_000) / 1_000;
+    const bootstrapSamples = bootstrapSamplesRef.current;
+    series.setData(toChartPoints(bootstrapSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
+    const latestTime = (bootstrapSamples.at(-1)?.sourceTimestampMs ?? openAt * 1_000) / 1_000;
     chart.timeScale().setVisibleRange({
       from: (latestTime - WINDOW_SECONDS) as UTCTimestamp,
       to: (latestTime + FUTURE_PADDING_SECONDS) as UTCTimestamp,
     });
     chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-      setFollowing(chart.timeScale().scrollPosition() >= -14);
+      const nextFollowing = chart.timeScale().scrollPosition() >= -14;
+      followingRef.current = nextFollowing;
+      setFollowing(nextFollowing);
     });
     chartRef.current = chart;
     seriesRef.current = series;
@@ -105,7 +110,7 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [initialSamples, openAt, resolveAt]);
+  }, [openAt]);
 
   useEffect(() => {
     function queueSample(sample: OracleSample) {
@@ -120,9 +125,9 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
         samplesRef.current = mergeOracleSamples(samplesRef.current, sample);
         seriesRef.current?.update({ time: chartTime(sample.sourceTimestampMs), value: sample.price });
         setLatest(sample);
-        if (following) {
+        if (followingRef.current && performance.now() - lastViewportUpdateRef.current >= 250) {
+          lastViewportUpdateRef.current = performance.now();
           const time = sample.sourceTimestampMs / 1_000;
-          seriesRef.current?.priceScale().applyOptions({ autoScale: true });
           chartRef.current?.timeScale().setVisibleRange({
             from: (time - WINDOW_SECONDS) as UTCTimestamp,
             to: (time + FUTURE_PADDING_SECONDS) as UTCTimestamp,
@@ -148,7 +153,7 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       return () => stream.close();
     }
 
-  }, [following, openAt, source]);
+  }, [openAt, source]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,11 +192,12 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
 
   function returnToLive() {
     chartRef.current?.timeScale().scrollToRealTime();
+    followingRef.current = true;
     setFollowing(true);
   }
 
   return (
-    <div className="relative h-full min-h-[280px] sm:min-h-[360px]">
+    <div className="relative h-full min-h-[280px] sm:min-h-[340px] lg:min-h-0">
       <div className="pointer-events-none absolute inset-x-4 top-4 z-20 flex items-start justify-between gap-4 sm:inset-x-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">BTC / USD</p>
@@ -201,6 +207,14 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
         <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">{feedState === "live" ? "Live" : "Reconnecting"}</p>
       </div>
       <div className="absolute inset-0" ref={containerRef} aria-label="Interactive Bitcoin price chart" role="img" />
+      {!latest && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center">
+          <div>
+            <p className="font-medium">Connecting to the BTC feed</p>
+            <p className="mt-1 text-sm text-muted-foreground">Price history will appear automatically.</p>
+          </div>
+        </div>
+      )}
       {!following && <button className="absolute bottom-10 right-16 z-20 min-h-10 border bg-card px-3 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={returnToLive} type="button">Return to live</button>}
       <p className="sr-only" aria-live="off">Current price {latest ? currency.format(latest.price) : "unavailable"}. Opening, betting lock, and resolution markers are shown.</p>
     </div>

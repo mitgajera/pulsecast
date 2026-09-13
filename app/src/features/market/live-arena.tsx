@@ -20,12 +20,12 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
     : history.samples.find((sample) => sample.sourceTimestampMs >= current.openAt * 1_000)?.price ?? null;
 
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
       <MarketAutoRefresh resolveAt={current.resolveAt} />
       <RoundResultDialog roundId={previous?.id ?? null} />
       <RoundRail rounds={rounds} />
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-4">
-        <main className="overflow-hidden border bg-card" id={`round-${current.id}`}>
+      <div className="grid items-start gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-stretch lg:gap-4">
+        <main className="overflow-hidden border bg-card lg:flex lg:min-h-0 lg:flex-col" id={`round-${current.id}`}>
           <section className="flex min-h-28 items-center border-b px-4 py-4 sm:px-6" aria-labelledby="market-heading">
             <div className="grid w-full gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div>
@@ -39,7 +39,6 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           <PriceChartShell
             initialSamples={history.samples}
             openAt={current.openAt}
-            resolveAt={current.resolveAt}
             source={history.source}
           />
           <section className="grid border-t bg-card sm:grid-cols-3" aria-label="Round statistics">
@@ -48,7 +47,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             <Stat label="Opening price" value={openingPrice === null ? "Awaiting capture" : `$${openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
           </section>
         </main>
-        <aside className="space-y-3 lg:sticky lg:top-20 lg:space-y-4">
+        <aside className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:space-y-4">
           <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} key={current.id} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>
