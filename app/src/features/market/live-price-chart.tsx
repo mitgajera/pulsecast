@@ -241,7 +241,7 @@ export default function LivePriceChart({ initialSamples, openAt, roundId, source
           <p className="mt-1 font-mono text-2xl font-semibold tabular-nums sm:text-3xl">{latest ? currency.format(latest.price) : "—"}</p>
           <p className="mt-1 text-xs text-muted-foreground">{source === "magicblock" ? "MagicBlock oracle · 50ms" : "Oracle feed unavailable"}</p>
         </div>
-        <p className="border bg-card/90 px-2 py-1 text-xs text-muted-foreground">{feedState === "live" ? "Live" : "Reconnecting"}</p>
+        <p className={`border bg-card/90 px-2 py-1 text-xs ${feedState === "live" ? "text-red-500" : "text-muted-foreground"}`}>{feedState === "live" ? "Live" : "Reconnecting"}</p>
       </div>
       <div className="absolute inset-0" ref={containerRef} aria-label="Interactive Bitcoin price chart" role="img" />
       {!latest && (
