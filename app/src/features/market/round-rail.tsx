@@ -1,16 +1,10 @@
 import type { MarketRound } from "./fixtures";
+import { LocalMarketTime } from "./local-market-time";
 
 const price = new Intl.NumberFormat("en-US", {
   currency: "USD",
   style: "currency",
   maximumFractionDigits: 2,
-});
-
-const time = new Intl.DateTimeFormat("en-US", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
 });
 
 export function RoundRail({ rounds }: { rounds: MarketRound[] }) {
@@ -35,7 +29,7 @@ export function RoundRail({ rounds }: { rounds: MarketRound[] }) {
               {round.label}
             </span>
             <span className="mt-1 block truncate font-mono text-sm font-medium tabular-nums sm:text-base">
-              {time.format(new Date(round.resolveAt * 1_000))}
+              <LocalMarketTime unixSeconds={round.resolveAt} />
             </span>
             <span className="mt-1 hidden text-xs text-muted-foreground sm:block">
               {round.closingPrice ? price.format(round.closingPrice) : `${round.predictions} predictions`}

@@ -1,9 +1,8 @@
 import type { PublicRound } from "@pulsecast/shared";
 
 import { RefreshMarketsButton } from "./refresh-markets-button";
+import { LocalMarketTime } from "./local-market-time";
 
-const timestamp = new Intl.DateTimeFormat("en-US", { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "short" });
-const clock = new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, minute: "2-digit", second: "2-digit" });
 const usdc = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 
 export function NoLiveMarket({ nowMs, rounds }: { nowMs: number; rounds: PublicRound[] }) {
@@ -22,7 +21,7 @@ export function NoLiveMarket({ nowMs, rounds }: { nowMs: number; rounds: PublicR
         </div>
         <div className="border bg-background/50 p-4">
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Next round</p>
-          {next ? <><p className="mt-2 font-mono text-2xl font-semibold tabular-nums">{clock.format(new Date(next.openAt * 1_000))}</p><p className="mt-2 text-sm text-muted-foreground">Round {next.id} opens automatically</p></> : <><p className="mt-2 text-lg font-semibold">Awaiting schedule</p><p className="mt-2 text-sm leading-6 text-muted-foreground">The operator controls when devnet markets run.</p></>}
+          {next ? <><p className="mt-2 font-mono text-2xl font-semibold tabular-nums"><LocalMarketTime unixSeconds={next.openAt} /></p><p className="mt-2 text-sm text-muted-foreground">Round {next.id} opens automatically</p></> : <><p className="mt-2 text-lg font-semibold">Awaiting schedule</p><p className="mt-2 text-sm leading-6 text-muted-foreground">The operator controls when devnet markets run.</p></>}
         </div>
       </section>
 
@@ -58,7 +57,7 @@ function RoundRow({ round }: { round: PublicRound }) {
 
   return (
     <article className="grid gap-3 px-5 py-3 text-sm sm:grid-cols-[0.8fr_1.2fr_auto] sm:items-center sm:px-6">
-      <div><p className="font-medium">Round {round.id}</p><p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground">{timestamp.format(new Date(round.openAt * 1_000))}</p></div>
+      <div><p className="font-medium">Round {round.id}</p><p className="mt-1 font-mono text-xs tabular-nums text-muted-foreground"><LocalMarketTime unixSeconds={round.openAt} variant="date-time" /></p></div>
       <div className="grid grid-cols-2 gap-4"><div><p className="text-xs text-muted-foreground">Result</p><p className="mt-1 font-mono tabular-nums">{close === null ? status : `$${close.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}</p></div><div><p className="text-xs text-muted-foreground">Pool</p><p className="mt-1 font-mono tabular-nums">{usdc.format(pool)} USDC</p></div></div>
       <a className="inline-flex min-h-10 items-center text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={`https://explorer.solana.com/address/${round.account}?cluster=devnet`} rel="noreferrer" target="_blank">View proof ↗</a>
     </article>
