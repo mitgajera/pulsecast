@@ -20,18 +20,18 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
     : history.samples.find((sample) => sample.sourceTimestampMs >= current.openAt * 1_000)?.price ?? null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <MarketAutoRefresh resolveAt={current.resolveAt} />
       <RoundResultDialog roundId={previous?.id ?? null} />
       <RoundRail rounds={rounds} />
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-4">
         <main className="overflow-hidden border bg-card" id={`round-${current.id}`}>
-          <section className="border-b px-4 py-5 sm:px-6" aria-labelledby="market-heading">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <section className="flex min-h-28 items-center border-b px-4 py-4 sm:px-6" aria-labelledby="market-heading">
+            <div className="grid w-full gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">BTC / USD · Round {current.id}</p>
                 <h1 className="mt-2 max-w-xl text-xl font-semibold tracking-tight sm:text-2xl" id="market-heading">Where will BTC close this minute?</h1>
-                <p className="mt-2 text-xs text-muted-foreground">30 seconds to predict · 30 seconds to watch · settles at the minute boundary</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">Predict for 30 seconds. Watch for 30 seconds. Settle at the minute boundary.</p>
               </div>
               <MarketClock initialServerTimeMs={initialServerTimeMs} lockAt={current.lockAt} resolveAt={current.resolveAt} />
             </div>
@@ -48,7 +48,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             <Stat label="Opening price" value={openingPrice === null ? "Awaiting capture" : `$${openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
           </section>
         </main>
-        <aside className="space-y-4 lg:sticky lg:top-20">
+        <aside className="space-y-3 lg:sticky lg:top-20 lg:space-y-4">
           <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} key={current.id} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>

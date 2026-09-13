@@ -68,9 +68,10 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
 
   return (
     <section className="border bg-card" aria-labelledby="forecast-title">
-      <div className="border-b px-5 py-4">
+      <div className="flex min-h-28 flex-col justify-center border-b px-5 py-4">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Your call</p>
         <h2 className="mt-1 text-lg font-semibold" id="forecast-title">Lock your prediction</h2>
+        <p className="mt-1 text-xs text-muted-foreground">One entry per wallet. Hidden until resolution.</p>
       </div>
       <form className="space-y-5 p-5" onSubmit={submitPrediction}>
         <div>
