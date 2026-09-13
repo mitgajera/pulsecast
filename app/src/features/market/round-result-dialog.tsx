@@ -15,12 +15,14 @@ export function RoundResultDialog({ roundId }: { roundId: string | null }) {
   const router = useRouter();
   const { getAccessToken } = usePrivy();
   const dialog = useRef<HTMLDialogElement>(null);
+  const dismissed = useRef(false);
   const [result, setResult] = useState<RoundResult | null>(null);
 
   useEffect(() => {
     if (!roundId || !auth.authenticated || !auth.address) return;
     const dismissedKey = `pulsecast:result:${auth.address}:${roundId}`;
-    if (window.localStorage.getItem(dismissedKey)) return;
+    dismissed.current = Boolean(window.localStorage.getItem(dismissedKey));
+    if (dismissed.current) return;
     let stopped = false;
     async function check() {
       try {
@@ -29,7 +31,7 @@ export function RoundResultDialog({ roundId }: { roundId: string | null }) {
         if (!response.ok) return;
         const payload = await response.json() as { predictions?: RoundResult[] };
         const match = payload.predictions?.find((item) => item.roundId === roundId && (item.status === "settled" || item.status === "cancelled"));
-        if (match && !stopped) setResult(match);
+        if (match && !stopped && !dismissed.current) setResult(match);
       } catch { /* The next poll retries transient RPC failures. */ }
     }
     void check();
@@ -45,6 +47,7 @@ export function RoundResultDialog({ roundId }: { roundId: string | null }) {
   const net = result.payoutUsdc - result.entryAmountUsdc;
   const profitable = net > 0;
   function dismiss() {
+    dismissed.current = true;
     window.localStorage.setItem(`pulsecast:result:${auth.address}:${roundId}`, "dismissed");
     dialog.current?.close();
     setResult(null);
