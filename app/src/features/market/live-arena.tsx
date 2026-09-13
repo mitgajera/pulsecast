@@ -39,6 +39,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
           <PriceChartShell
             initialSamples={history.samples}
             openAt={current.openAt}
+            roundId={current.id}
             source={history.source}
           />
           <section className="grid border-t bg-card sm:grid-cols-3" aria-label="Round statistics">
@@ -47,7 +48,7 @@ export function LiveArena({ history, initialServerTimeMs, rounds }: { history: M
             <Stat label="Opening price" value={openingPrice === null ? "Awaiting capture" : `$${openingPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`} />
           </section>
         </main>
-        <aside className="space-y-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:space-y-4">
+        <aside className="scrollbar-hidden space-y-3 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:space-y-4">
           <ForecastTicket initialPrice={history.samples.at(-1)?.price ?? current.openingPrice} key={current.id} roundId={current.id} stakeUsdc={current.entryAmountUsdc} watching={watching} />
           <section className="border bg-card p-5" aria-labelledby="precision-title">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">How rewards work</p>

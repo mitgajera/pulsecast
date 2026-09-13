@@ -64,6 +64,7 @@
     /* lightweight-charts requires legacy CSS colors instead of OKLCH/Lab. */
     --chart-canvas-primary: #006987;
     --chart-canvas-primary-fill: rgba(0, 105, 135, 0.18);
+    --chart-canvas-prediction: #9a6700;
     --chart-canvas-muted: #555f64;
     --chart-canvas-border: #c9d0d4;
     --radius: 0.5rem;
@@ -97,6 +98,7 @@
     --chart-5: oklch(0.70 0.18 25);
     --chart-canvas-primary: #5b8bb8;
     --chart-canvas-primary-fill: rgba(91, 139, 184, 0.18);
+    --chart-canvas-prediction: #d9ad55;
     --chart-canvas-muted: #919ba1;
     --chart-canvas-border: #34434d;
     --radius: 0.5rem;
@@ -114,5 +116,13 @@
     min-height: 100vh;
     background: var(--background);
     color: var(--foreground);
+  }
+}
+
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
   }
 }

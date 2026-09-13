@@ -12,6 +12,7 @@ const LivePriceChart = dynamic(() => import("./live-price-chart"), {
 type PriceChartShellProps = {
   initialSamples: OracleSample[];
   openAt: number;
+  roundId: string;
   source: "fixture" | "magicblock";
 };
 

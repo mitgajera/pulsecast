@@ -5,19 +5,24 @@ import {
   ColorType,
   CrosshairMode,
   createChart,
+  LineStyle,
   LineType,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { marketHistorySchema, oracleSampleSchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
+import { usePulseCastAuth } from "@/features/auth/auth-context";
 import { mergeOracleHistory, mergeOracleSamples, toChartPoints, type OracleSample } from "./oracle-sample";
+import { loadPredictionMarker, PREDICTION_MARKER_EVENT, type PredictionMarker } from "./prediction-marker";
 
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
   openAt: number;
+  roundId: string;
   source: "fixture" | "magicblock";
 };
 
@@ -29,10 +34,12 @@ function chartTime(sourceTimestampMs: number) {
   return (sourceTimestampMs / 1_000) as UTCTimestamp;
 }
 
-export default function LivePriceChart({ initialSamples, openAt, source }: LivePriceChartProps) {
+export default function LivePriceChart({ initialSamples, openAt, roundId, source }: LivePriceChartProps) {
+  const auth = usePulseCastAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const predictionLineRef = useRef<IPriceLine | null>(null);
   const bootstrapSamplesRef = useRef(initialSamples);
   const samplesRef = useRef(initialSamples);
   const pendingRef = useRef<OracleSample | null>(null);
@@ -111,6 +118,33 @@ export default function LivePriceChart({ initialSamples, openAt, source }: LiveP
       seriesRef.current = null;
     };
   }, [openAt]);
+
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series || !auth.address) return;
+
+    const markerColor = getComputedStyle(document.documentElement).getPropertyValue("--chart-canvas-prediction").trim();
+    function showMarker(price: number) {
+      if (predictionLineRef.current) series!.removePriceLine(predictionLineRef.current);
+      predictionLineRef.current = series!.createPriceLine({
+        axisLabelVisible: true,
+        color: markerColor,
+        lineStyle: LineStyle.Dashed,
+        lineWidth: 1,
+        price,
+        title: "Your prediction",
+      });
+    }
+
+    const saved = loadPredictionMarker(auth.address, roundId);
+    if (saved !== null) showMarker(saved);
+    const onMarker = (event: Event) => {
+      const marker = (event as CustomEvent<PredictionMarker>).detail;
+      if (marker.wallet === auth.address && marker.roundId === roundId) showMarker(marker.price);
+    };
+    window.addEventListener(PREDICTION_MARKER_EVENT, onMarker);
+    return () => window.removeEventListener(PREDICTION_MARKER_EVENT, onMarker);
+  }, [auth.address, roundId]);
 
   useEffect(() => {
     function queueSample(sample: OracleSample) {
