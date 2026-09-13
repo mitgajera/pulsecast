@@ -16,6 +16,7 @@ test-ledger/
 # JavaScript / Next.js
 node_modules/
 .next/
+.vercel/
 out/
 coverage/
 *.tsbuildinfo
