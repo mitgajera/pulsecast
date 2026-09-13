@@ -16,7 +16,7 @@ import { marketHistorySchema, oracleSampleSchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
-import { mergeOracleHistory, mergeOracleSamples, toChartPoints, type OracleSample } from "./oracle-sample";
+import { mergeOracleHistory, mergeOracleSamples, samplesAfter, toChartPoints, type OracleSample } from "./oracle-sample";
 import { loadPredictionMarker, PREDICTION_MARKER_EVENT, type PredictionMarker } from "./prediction-marker";
 
 type LivePriceChartProps = {
@@ -156,12 +156,15 @@ export default function LivePriceChart({ initialSamples, openAt, roundId, source
         const sample = pendingRef.current;
         if (!sample) return;
         pendingRef.current = null;
-        samplesRef.current = mergeOracleSamples(samplesRef.current, sample);
-        seriesRef.current?.update({ time: chartTime(sample.sourceTimestampMs), value: sample.price });
-        setLatest(sample);
+        const merged = mergeOracleSamples(samplesRef.current, sample);
+        if (merged === samplesRef.current) return;
+        samplesRef.current = merged;
+        const accepted = merged.at(-1)!;
+        seriesRef.current?.update({ time: chartTime(accepted.sourceTimestampMs), value: accepted.price });
+        setLatest(accepted);
         if (followingRef.current && performance.now() - lastViewportUpdateRef.current >= 250) {
           lastViewportUpdateRef.current = performance.now();
-          const time = sample.sourceTimestampMs / 1_000;
+          const time = accepted.sourceTimestampMs / 1_000;
           chartRef.current?.timeScale().setVisibleRange({
             from: (time - WINDOW_SECONDS) as UTCTimestamp,
             to: (time + FUTURE_PADDING_SECONDS) as UTCTimestamp,
@@ -200,10 +203,10 @@ export default function LivePriceChart({ initialSamples, openAt, roundId, source
         });
         if (!response.ok) throw new Error("History request failed");
         const parsed = marketHistorySchema.parse(await response.json());
-        const previousLength = samplesRef.current.length;
+        const previousLatest = samplesRef.current.at(-1);
         const merged = mergeOracleHistory(samplesRef.current, parsed.samples);
         samplesRef.current = merged;
-        for (const sample of merged.slice(previousLength)) {
+        for (const sample of samplesAfter(merged, previousLatest)) {
           seriesRef.current?.update({ time: chartTime(sample.sourceTimestampMs), value: sample.price });
         }
         const newest = merged.at(-1);

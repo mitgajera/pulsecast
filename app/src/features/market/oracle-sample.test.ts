@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createOracleHistory, mergeOracleHistory, mergeOracleSamples, nextFixtureSample, toChartPoints } from "./oracle-sample";
+import { createOracleHistory, mergeOracleHistory, mergeOracleSamples, nextFixtureSample, samplesAfter, toChartPoints } from "./oracle-sample";
 
 describe("oracle sample fixtures", () => {
   it("creates ordered half-second history without gaps", () => {
@@ -53,5 +53,12 @@ describe("oracle sample fixtures", () => {
       { time: 1_800_000_000.9, value: 77_101 },
       { time: 1_800_000_001.1, value: 77_102 },
     ]);
+  });
+
+  it("finds new chart samples when the rolling history stays capped", () => {
+    const previous = { price: 77_100, sourceTimestampMs: 1_800_000_000_000, slot: 10 };
+    const replacement = { price: 77_101, sourceTimestampMs: 1_800_000_000_000, slot: 11 };
+    const next = { price: 77_102, sourceTimestampMs: 1_800_000_000_050, slot: 12 };
+    expect(samplesAfter([replacement, next], previous)).toEqual([replacement, next]);
   });
 });

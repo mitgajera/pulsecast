@@ -55,3 +55,11 @@ export function mergeOracleSamples(current: OracleSample[], incoming: OracleSamp
 export function mergeOracleHistory(current: OracleSample[], incoming: OracleSample[]) {
   return incoming.reduce(mergeOracleSamples, current);
 }
+
+export function samplesAfter(samples: OracleSample[], previous: OracleSample | undefined) {
+  if (!previous) return samples;
+  return samples.filter((sample) =>
+    sample.sourceTimestampMs > previous.sourceTimestampMs ||
+    (sample.sourceTimestampMs === previous.sourceTimestampMs && sample.slot > previous.slot)
+  );
+}
