@@ -2,10 +2,10 @@ import type { OracleSample } from "@pulsecast/shared";
 
 export type { OracleSample } from "@pulsecast/shared";
 
-export function toSecondChartPoints(samples: OracleSample[]) {
+export function toChartPoints(samples: OracleSample[]) {
   const points: Array<{ time: number; value: number }> = [];
   for (const sample of samples) {
-    const point = { time: Math.floor(sample.sourceTimestampMs / 1_000), value: sample.price };
+    const point = { time: sample.sourceTimestampMs / 1_000, value: sample.price };
     if (points.at(-1)?.time === point.time) points[points.length - 1] = point;
     else points.push(point);
   }

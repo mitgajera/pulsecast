@@ -13,7 +13,7 @@ import {
 import { marketHistorySchema, oracleSampleSchema } from "@pulsecast/shared";
 import { useEffect, useRef, useState } from "react";
 
-import { mergeOracleHistory, mergeOracleSamples, toSecondChartPoints, type OracleSample } from "./oracle-sample";
+import { mergeOracleHistory, mergeOracleSamples, toChartPoints, type OracleSample } from "./oracle-sample";
 
 type LivePriceChartProps = {
   initialSamples: OracleSample[];
@@ -23,6 +23,12 @@ type LivePriceChartProps = {
 };
 
 const currency = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency" });
+const WINDOW_SECONDS = 90;
+const FUTURE_PADDING_SECONDS = 4;
+
+function chartTime(sourceTimestampMs: number) {
+  return (sourceTimestampMs / 1_000) as UTCTimestamp;
+}
 
 export default function LivePriceChart({ initialSamples, openAt, resolveAt, source }: LivePriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,8 +63,19 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       handleScale: { axisDoubleClickReset: true, mouseWheel: true, pinch: true },
       handleScroll: { horzTouchDrag: true, mouseWheel: true, pressedMouseMove: true, vertTouchDrag: false },
       leftPriceScale: { visible: false },
-      rightPriceScale: { borderVisible: false, scaleMargins: { bottom: 0.18, top: 0.2 } },
-      timeScale: { borderVisible: false, rightOffset: 12, secondsVisible: true, timeVisible: true },
+      rightPriceScale: {
+        autoScale: true,
+        borderVisible: false,
+        minimumWidth: 72,
+        scaleMargins: { bottom: 0.14, top: 0.18 },
+      },
+      timeScale: {
+        borderVisible: false,
+        fixLeftEdge: true,
+        rightOffset: 4,
+        secondsVisible: true,
+        timeVisible: true,
+      },
     });
     const series = chart.addSeries(AreaSeries, {
       lineColor: styles.getPropertyValue("--chart-canvas-primary").trim(),
@@ -70,9 +87,12 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
       priceFormat: { minMove: 0.01, precision: 2, type: "price" },
     });
     series.priceScale().applyOptions({ autoScale: true });
-    series.setData(toSecondChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
-    const latestTime = Math.floor((initialSamples.at(-1)?.sourceTimestampMs ?? openAt * 1_000) / 1_000);
-    chart.timeScale().setVisibleRange({ from: (latestTime - 90) as UTCTimestamp, to: (latestTime + 5) as UTCTimestamp });
+    series.setData(toChartPoints(initialSamples).map((point) => ({ ...point, time: point.time as UTCTimestamp })));
+    const latestTime = (initialSamples.at(-1)?.sourceTimestampMs ?? openAt * 1_000) / 1_000;
+    chart.timeScale().setVisibleRange({
+      from: (latestTime - WINDOW_SECONDS) as UTCTimestamp,
+      to: (latestTime + FUTURE_PADDING_SECONDS) as UTCTimestamp,
+    });
     chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
       setFollowing(chart.timeScale().scrollPosition() >= -14);
     });
@@ -98,11 +118,15 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
         if (!sample) return;
         pendingRef.current = null;
         samplesRef.current = mergeOracleSamples(samplesRef.current, sample);
-        seriesRef.current?.update({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price });
+        seriesRef.current?.update({ time: chartTime(sample.sourceTimestampMs), value: sample.price });
         setLatest(sample);
         if (following) {
-          const time = Math.floor(sample.sourceTimestampMs / 1_000);
-          chartRef.current?.timeScale().setVisibleRange({ from: (time - 90) as UTCTimestamp, to: (time + 5) as UTCTimestamp });
+          const time = sample.sourceTimestampMs / 1_000;
+          seriesRef.current?.priceScale().applyOptions({ autoScale: true });
+          chartRef.current?.timeScale().setVisibleRange({
+            from: (time - WINDOW_SECONDS) as UTCTimestamp,
+            to: (time + FUTURE_PADDING_SECONDS) as UTCTimestamp,
+          });
         }
       });
     }
@@ -141,7 +165,7 @@ export default function LivePriceChart({ initialSamples, openAt, resolveAt, sour
         const merged = mergeOracleHistory(samplesRef.current, parsed.samples);
         samplesRef.current = merged;
         for (const sample of merged.slice(previousLength)) {
-          seriesRef.current?.update({ time: Math.floor(sample.sourceTimestampMs / 1_000) as UTCTimestamp, value: sample.price });
+          seriesRef.current?.update({ time: chartTime(sample.sourceTimestampMs), value: sample.price });
         }
         const newest = merged.at(-1);
         if (newest) setLatest(newest);
