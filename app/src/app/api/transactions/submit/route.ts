@@ -21,6 +21,11 @@ export async function POST(request: Request) {
     if (transaction.instructions.some((instruction) => !allowedPrograms.has(instruction.programId.toBase58()))) return failure(403, "Transaction contains an unsupported program.");
     const connection = new Connection(process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com", "confirmed");
     const signature = await connection.sendRawTransaction(transaction.serialize(), { maxRetries: 2, skipPreflight: true });
+    const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    if (confirmation.value.err) {
+      console.error("Sponsored transaction rejected", signature, confirmation.value.err);
+      return failure(409, "Transaction was rejected by Solana. Refresh and try again.");
+    }
     return NextResponse.json({ signature });
   } catch (error) {
     if (error instanceof ApiAuthError) return failure(error.status, error.message);
