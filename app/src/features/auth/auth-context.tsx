@@ -46,7 +46,7 @@ export function PulseCastAuthProvider({ children, appId }: { children: React.Rea
           showWalletUIs: false,
           solana: { createOnLogin: "users-without-wallets" },
         },
-        loginMethods: ["email", "google", "passkey", "wallet"],
+        loginMethods: ["email", "google", "twitter", "passkey", "wallet"],
         solana: {
           rpcs: {
             "solana:devnet": {
