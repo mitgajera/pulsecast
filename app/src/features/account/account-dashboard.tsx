@@ -34,6 +34,7 @@ export function AccountDashboard() {
   const [portfolioView, setPortfolioView] = useState<PortfolioView>("activity");
   const [pnlPeriod, setPnlPeriod] = useState<PnlPeriod>("day");
   const [trades, setTrades] = useState<PortfolioTrade[]>(() => auth.address ? loadPortfolioLedger(auth.address) : []);
+  const [copied, setCopied] = useState(false);
 
   const fetchAccount = useCallback(async () => {
     if (!auth.address) return;
@@ -81,9 +82,18 @@ export function AccountDashboard() {
     catch (error) { setMessage(error instanceof Error ? error.message : "Withdrawal failed."); }
     finally { setBusy(null); }
   }
+  async function copyWalletAddress() {
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1_500);
+    } catch {
+      setMessage("Wallet address could not be copied. Select it and copy manually.");
+    }
+  }
 
   return <div className="space-y-4">
-    <section className="grid border bg-card md:grid-cols-[1fr_auto] md:items-end"><div className="flex items-center gap-4 p-5 sm:p-6"><WalletAvatar address={walletAddress} size="lg" /><div><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Available balance</p><p className="mt-2 font-mono text-3xl font-semibold tabular-nums">{usdc.format(account.balanceUsdc)} <span className="text-sm font-medium text-muted-foreground">USDC</span></p><p className="mt-2 font-mono text-xs text-muted-foreground">{shortAddress(walletAddress)}</p></div></div><dl className="grid grid-cols-2 border-t md:border-l md:border-t-0"><Stat label="Predictions" value={String(account.predictions.length)} /><Stat label="Claimable" value={`${usdc.format(claimable)} USDC`} /></dl></section>
+    <section className="grid border bg-card md:grid-cols-[1fr_auto] md:items-end"><div className="flex items-center gap-4 p-5 sm:p-6"><WalletAvatar address={walletAddress} size="lg" /><div><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Available balance</p><p className="mt-2 font-mono text-3xl font-semibold tabular-nums">{usdc.format(account.balanceUsdc)} <span className="text-sm font-medium text-muted-foreground">USDC</span></p><div className="mt-1 flex items-center"><span className="font-mono text-xs text-muted-foreground" title={walletAddress}>{shortAddress(walletAddress)}</span><button aria-label={copied ? "Wallet address copied" : "Copy wallet address"} className="grid min-h-10 min-w-10 place-items-center text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => void copyWalletAddress()} title={copied ? "Copied" : "Copy address"} type="button">{copied ? <CheckIcon /> : <CopyIcon />}</button></div></div></div><dl className="grid grid-cols-2 border-t md:border-l md:border-t-0"><Stat label="Predictions" value={String(account.predictions.length)} /><Stat label="Claimable" value={`${usdc.format(claimable)} USDC`} /></dl></section>
     {message && <p className="border bg-card px-4 py-3 text-sm" role="status">{message}</p>}
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="border bg-card">
@@ -100,6 +110,8 @@ export function AccountDashboard() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) { return <div className="min-w-36 p-5"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-mono text-sm font-semibold tabular-nums">{value}</dd></div>; }
+function CopyIcon() { return <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 24 24" width="14"><rect height="13" rx="2" stroke="currentColor" strokeWidth="1.8" width="13" x="8" y="8" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /></svg>; }
+function CheckIcon() { return <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 24 24" width="14"><path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>; }
 function PnlPanel({ period, setPeriod, trades }: { period: PnlPeriod; setPeriod: (period: PnlPeriod) => void; trades: PortfolioTrade[] }) {
   const cutoff = periodCutoff(period);
   const completed = trades.filter((trade) => trade.payoutUsdc !== null && trade.submittedAt >= cutoff);
