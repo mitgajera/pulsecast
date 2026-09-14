@@ -46,7 +46,18 @@ export function AccountDashboard() {
       if (!response.ok) throw new Error(payload.message ?? "Account data could not load.");
       const accountData = payload as AccountData;
       setData(accountData);
-      setTrades(mergePortfolioTrades(auth.address, [...accountData.tradeHistory, ...accountData.predictions.map(toPortfolioTrade)]));
+      const currentTrades = accountData.predictions.map((item): PortfolioTrade => ({
+        actualPrice: item.actualPrice,
+        payoutUsdc: item.status === "settled" || item.status === "cancelled"
+          ? (item.status === "cancelled" ? item.entryAmountUsdc : item.payoutUsdc)
+          : null,
+        predictedPrice: item.predictedPrice,
+        roundId: item.roundId ?? item.account,
+        stakeUsdc: item.entryAmountUsdc,
+        status: item.status,
+        submittedAt: item.submittedAt,
+      }));
+      setTrades(mergePortfolioTrades(auth.address, [...accountData.tradeHistory, ...currentTrades]));
       setLoadState("ready");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Account data could not load."); setLoadState("error"); }
   }, [auth.address, getAccessToken, setData, setLoadState, setMessage]);
@@ -139,7 +150,6 @@ function PredictionRow({ busy, item, onClaim }: { busy: string | null; item: Pre
   return <article className="grid min-h-24 gap-3 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-5"><div className="font-mono text-sm font-semibold">#{item.roundId ?? "—"}</div><div><p className="font-mono text-sm tabular-nums">Predicted {price.format(item.predictedPrice)}</p><p className="mt-1 text-xs text-muted-foreground">{resolved ? `Closed ${price.format(item.actualPrice!)}${item.error === null ? "" : ` · ${price.format(item.error)} away`}` : statusLabel(item.status)}</p></div><div className="sm:text-right"><p className="font-mono text-sm font-semibold tabular-nums">{result}</p>{item.claimable ? <button aria-busy={busy === item.account} className="mt-2 min-h-10 border px-3 text-sm font-medium hover:bg-accent disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-ring" disabled={busy !== null} onClick={() => void onClaim(item)} type="button">{busy === item.account ? "Claiming…" : "Claim"}</button> : <p className="mt-1 text-xs text-muted-foreground">{item.claimed ? "Claimed" : resolved ? "Settlement complete" : "Result after resolution"}</p>}</div></article>;
 }
 function statusLabel(status: string) { return ({ scheduled: "Scheduled", betting: "Betting open", watching: "Watching", resolved: "Resolving", settled: "Settled", cancelled: "Cancelled" } as Record<string, string>)[status] ?? "Unavailable"; }
-function toPortfolioTrade(item: Prediction): PortfolioTrade { const completed = item.status === "settled" || item.status === "cancelled"; return { actualPrice: item.actualPrice, payoutUsdc: completed ? (item.status === "cancelled" ? item.entryAmountUsdc : item.payoutUsdc) : null, predictedPrice: item.predictedPrice, roundId: item.roundId ?? item.account, stakeUsdc: item.entryAmountUsdc, status: item.status, submittedAt: item.submittedAt }; }
 function periodCutoff(period: PnlPeriod) { const now = new Date(); if (period === "day") return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1_000; return Math.floor(now.getTime() / 1_000) - (period === "week" ? 7 : 30) * 86_400; }
 function pnlTone(value: number) { return value > 0 ? "text-chart-3" : value < 0 ? "text-destructive" : "text-muted-foreground"; }
 function signedUsdc(value: number) { return `${value > 0 ? "+" : value < 0 ? "−" : ""}${usdc.format(Math.abs(value))} USDC`; }
