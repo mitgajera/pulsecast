@@ -3,7 +3,7 @@
 import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
 import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 
 const devnetRpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "https://api.devnet.solana.com";
 const devnetSubscriptionsUrl = devnetRpcUrl.replace(/^http/, "ws");
@@ -66,6 +66,20 @@ export function PulseCastAuthProvider({ children, appId }: { children: React.Rea
 function PrivyAuthBridge({ children }: { children: React.ReactNode }) {
   const { authenticated, login, logout, ready: authReady } = usePrivy();
   const { ready: walletsReady, wallets } = useWallets();
+  const firstVisitPrompted = useRef(false);
+
+  useEffect(() => {
+    if (!authReady || firstVisitPrompted.current) return;
+    const key = "pulsecast:first-visit-sign-in";
+    if (authenticated) {
+      window.localStorage.setItem(key, "seen");
+      return;
+    }
+    if (window.localStorage.getItem(key)) return;
+    firstVisitPrompted.current = true;
+    window.localStorage.setItem(key, "seen");
+    login();
+  }, [authReady, authenticated, login]);
 
   return (
     <AuthContext.Provider
