@@ -3,7 +3,7 @@
 
 import { PublicKey } from "@solana/web3.js";
 import { usePrivy } from "@privy-io/react-auth";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
 import { WalletAvatar } from "@/features/auth/wallet-avatar";
@@ -35,10 +35,12 @@ export function AccountDashboard() {
   const [pnlPeriod, setPnlPeriod] = useState<PnlPeriod>("day");
   const [trades, setTrades] = useState<PortfolioTrade[]>(() => auth.address ? loadPortfolioLedger(auth.address) : []);
   const [copied, setCopied] = useState(false);
+  const loadedWallet = useRef<string | null>(null);
 
   const fetchAccount = useCallback(async () => {
     if (!auth.address) return;
-    setLoadState("loading");
+    const isBackgroundRefresh = loadedWallet.current === auth.address;
+    if (!isBackgroundRefresh) setLoadState("loading");
     try {
       const token = await getAccessToken();
       const response = await fetch(`/api/account?wallet=${encodeURIComponent(auth.address)}`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
@@ -46,6 +48,7 @@ export function AccountDashboard() {
       if (!response.ok) throw new Error(payload.message ?? "Account data could not load.");
       const accountData = payload as AccountData;
       setData(accountData);
+      loadedWallet.current = auth.address;
       const currentTrades = accountData.predictions.map((item): PortfolioTrade => ({
         actualPrice: item.actualPrice,
         payoutUsdc: item.status === "settled" || item.status === "cancelled"
@@ -59,7 +62,7 @@ export function AccountDashboard() {
       }));
       setTrades(mergePortfolioTrades(auth.address, [...accountData.tradeHistory, ...currentTrades]));
       setLoadState("ready");
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Account data could not load."); setLoadState("error"); }
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Account data could not load."); setLoadState(isBackgroundRefresh ? "ready" : "error"); }
   }, [auth.address, getAccessToken, setData, setLoadState, setMessage]);
   useEffect(() => {
     if (!auth.authenticated || !auth.address) return;
