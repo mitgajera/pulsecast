@@ -45,7 +45,7 @@ export function AuthControl() {
         <a className="flex min-h-10 items-center px-3 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" href="/profile">Account &amp; payouts</a>
         <button className="min-h-10 px-3 text-left text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" onClick={copyAddress} type="button">{copied ? "Copied" : "Copy address"}</button>
         <a className="flex min-h-10 items-center px-3 text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" href={`https://explorer.solana.com/address/${address}?cluster=devnet`} rel="noreferrer" target="_blank">View on explorer</a>
-        <button className="min-h-10 border-t px-3 text-left text-sm text-muted-foreground hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" onClick={() => void logout()} type="button">Sign out</button>
+        <button className="min-h-10 border-t px-3 text-left text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => void logout()} type="button">Sign out</button>
       </div>
     </details>
   );
