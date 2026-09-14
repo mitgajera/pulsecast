@@ -7,11 +7,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
 import { WalletAvatar } from "@/features/auth/wallet-avatar";
+import { loadPortfolioLedger, mergePortfolioTrades, type PortfolioTrade } from "./portfolio-ledger";
 import { useAccountOperation } from "./use-account-operation";
 
 type Prediction = { account: string; actualPrice: number | null; claimType: "claim_payout" | "claim_refund"; claimable: boolean; claimed: boolean; entryAmountUsdc: number; error: number | null; payoutUsdc: number; predictedPrice: number; roundId: string | null; status: string; submittedAt: number };
-type AccountData = { balanceUsdc: number; tokenAccount: string; wallet: string; predictions: Prediction[] };
+type AccountData = { balanceUsdc: number; tokenAccount: string; tradeHistory: PortfolioTrade[]; wallet: string; predictions: Prediction[] };
 type LoadState = "idle" | "loading" | "ready" | "error";
+type PortfolioView = "activity" | "pnl";
+type PnlPeriod = "day" | "week" | "month";
 
 const usdc = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 const price = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
@@ -28,6 +31,9 @@ export function AccountDashboard() {
   const [destination, setDestination] = useState("");
   const [amount, setAmount] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [portfolioView, setPortfolioView] = useState<PortfolioView>("activity");
+  const [pnlPeriod, setPnlPeriod] = useState<PnlPeriod>("day");
+  const [trades, setTrades] = useState<PortfolioTrade[]>(() => auth.address ? loadPortfolioLedger(auth.address) : []);
 
   const fetchAccount = useCallback(async () => {
     if (!auth.address) return;
@@ -37,7 +43,10 @@ export function AccountDashboard() {
       const response = await fetch(`/api/account?wallet=${encodeURIComponent(auth.address)}`, { headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "Account data could not load.");
-      setData(payload); setLoadState("ready");
+      const accountData = payload as AccountData;
+      setData(accountData);
+      setTrades(mergePortfolioTrades(auth.address, [...accountData.tradeHistory, ...accountData.predictions.map(toPortfolioTrade)]));
+      setLoadState("ready");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Account data could not load."); setLoadState("error"); }
   }, [auth.address, getAccessToken, setData, setLoadState, setMessage]);
   useEffect(() => {
@@ -78,8 +87,8 @@ export function AccountDashboard() {
     {message && <p className="border bg-card px-4 py-3 text-sm" role="status">{message}</p>}
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className="border bg-card">
-        <header className="border-b p-5"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Activity</p><h1 className="mt-1 text-xl font-semibold">Prediction history</h1></header>
-        {account.predictions.length === 0 ? (
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b p-5"><div><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Portfolio</p><h1 className="mt-1 text-xl font-semibold">{portfolioView === "activity" ? "Prediction history" : "Profit and loss"}</h1></div><div aria-label="Portfolio view" className="flex border"><button aria-pressed={portfolioView === "activity"} className="min-h-10 px-4 text-sm font-medium aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setPortfolioView("activity")} type="button">Activity</button><button aria-pressed={portfolioView === "pnl"} className="min-h-10 border-l px-4 text-sm font-medium aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={() => setPortfolioView("pnl")} type="button">P&amp;L</button></div></header>
+        {portfolioView === "pnl" ? <PnlPanel period={pnlPeriod} setPeriod={setPnlPeriod} trades={trades} /> : account.predictions.length === 0 ? (
           <div className="p-8 text-center"><p className="font-medium">No predictions yet</p><p className="mt-2 text-sm text-muted-foreground">Enter a live minute market to start building your record.</p><a className="mt-5 inline-flex min-h-10 items-center text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/">View live market</a></div>
         ) : (
           <div aria-label="Prediction history entries" className="scrollbar-hidden max-h-96 divide-y overflow-y-auto overscroll-contain" role="region" tabIndex={0}>{account.predictions.map((item) => <PredictionRow busy={busy} item={item} key={item.account} onClaim={runClaim} />)}</div>
@@ -91,6 +100,21 @@ export function AccountDashboard() {
 }
 
 function Stat({ label, value }: { label: string; value: string }) { return <div className="min-w-36 p-5"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-mono text-sm font-semibold tabular-nums">{value}</dd></div>; }
+function PnlPanel({ period, setPeriod, trades }: { period: PnlPeriod; setPeriod: (period: PnlPeriod) => void; trades: PortfolioTrade[] }) {
+  const cutoff = periodCutoff(period);
+  const completed = trades.filter((trade) => trade.payoutUsdc !== null && trade.submittedAt >= cutoff);
+  const totalPnl = completed.reduce((sum, trade) => sum + (trade.payoutUsdc! - trade.stakeUsdc), 0);
+  return <div>
+    <div className="grid border-b sm:grid-cols-[1fr_auto] sm:items-end"><div className="p-5"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Total P&amp;L</p><p className={`mt-2 font-mono text-3xl font-semibold tabular-nums ${pnlTone(totalPnl)}`}>{signedUsdc(totalPnl)}</p><p className="mt-2 text-xs text-muted-foreground">{completed.length} resolved {completed.length === 1 ? "market" : "markets"} in this period</p></div><div aria-label="P and L period" className="flex border-t sm:m-5 sm:border"><PeriodButton active={period === "day"} label="Today" onClick={() => setPeriod("day")} /><PeriodButton active={period === "week"} label="7D" onClick={() => setPeriod("week")} /><PeriodButton active={period === "month"} label="30D" onClick={() => setPeriod("month")} /></div></div>
+    {trades.length === 0 ? <div className="p-8 text-center"><p className="font-medium">No trades recorded yet</p><p className="mt-2 text-sm text-muted-foreground">Your next confirmed prediction will appear here with its stake and result.</p><a className="mt-5 inline-flex min-h-10 items-center text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring" href="/">View live market</a></div> : <div aria-label="Profit and loss history" className="scrollbar-hidden max-h-96 divide-y overflow-y-auto overscroll-contain" role="region" tabIndex={0}>{trades.map((trade) => <PnlRow key={trade.roundId} trade={trade} />)}</div>}
+  </div>;
+}
+function PeriodButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) { return <button aria-pressed={active} className="min-h-10 min-w-16 border-r px-3 text-sm font-medium last:border-r-0 aria-pressed:bg-accent aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" onClick={onClick} type="button">{label}</button>; }
+function PnlRow({ trade }: { trade: PortfolioTrade }) {
+  const complete = trade.payoutUsdc !== null;
+  const net = complete ? trade.payoutUsdc! - trade.stakeUsdc : null;
+  return <article className="grid min-h-24 gap-3 p-4 sm:grid-cols-[5rem_minmax(0,1fr)_8rem_8rem] sm:items-center sm:px-5"><div><p className="font-mono text-sm font-semibold">#{trade.roundId}</p><p className="mt-1 text-xs text-muted-foreground"><time dateTime={new Date(trade.submittedAt * 1_000).toISOString()}>{tradeDate.format(new Date(trade.submittedAt * 1_000))}</time></p></div><div><p className="text-xs text-muted-foreground">Prediction</p><p className="mt-1 font-mono text-sm tabular-nums">{price.format(trade.predictedPrice)}</p></div><div className="sm:text-right"><p className="text-xs text-muted-foreground">Stake / return</p><p className="mt-1 font-mono text-sm tabular-nums">{usdc.format(trade.stakeUsdc)} / {complete ? usdc.format(trade.payoutUsdc!) : "Pending"}</p></div><div className="sm:text-right"><p className="text-xs text-muted-foreground">Net P&amp;L</p><p className={`mt-1 font-mono text-sm font-semibold tabular-nums ${net === null ? "text-muted-foreground" : pnlTone(net)}`}>{net === null ? "Pending" : signedUsdc(net)}</p></div></article>;
+}
 function PredictionRow({ busy, item, onClaim }: { busy: string | null; item: Prediction; onClaim: (item: Prediction) => Promise<void> }) {
   const resolved = item.actualPrice !== null;
   const result = item.claimType === "claim_refund"
@@ -103,4 +127,9 @@ function PredictionRow({ busy, item, onClaim }: { busy: string | null; item: Pre
   return <article className="grid min-h-24 gap-3 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:px-5"><div className="font-mono text-sm font-semibold">#{item.roundId ?? "—"}</div><div><p className="font-mono text-sm tabular-nums">Predicted {price.format(item.predictedPrice)}</p><p className="mt-1 text-xs text-muted-foreground">{resolved ? `Closed ${price.format(item.actualPrice!)}${item.error === null ? "" : ` · ${price.format(item.error)} away`}` : statusLabel(item.status)}</p></div><div className="sm:text-right"><p className="font-mono text-sm font-semibold tabular-nums">{result}</p>{item.claimable ? <button aria-busy={busy === item.account} className="mt-2 min-h-10 border px-3 text-sm font-medium hover:bg-accent disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-ring" disabled={busy !== null} onClick={() => void onClaim(item)} type="button">{busy === item.account ? "Claiming…" : "Claim"}</button> : <p className="mt-1 text-xs text-muted-foreground">{item.claimed ? "Claimed" : resolved ? "Settlement complete" : "Result after resolution"}</p>}</div></article>;
 }
 function statusLabel(status: string) { return ({ scheduled: "Scheduled", betting: "Betting open", watching: "Watching", resolved: "Resolving", settled: "Settled", cancelled: "Cancelled" } as Record<string, string>)[status] ?? "Unavailable"; }
+function toPortfolioTrade(item: Prediction): PortfolioTrade { const completed = item.status === "settled" || item.status === "cancelled"; return { actualPrice: item.actualPrice, payoutUsdc: completed ? (item.status === "cancelled" ? item.entryAmountUsdc : item.payoutUsdc) : null, predictedPrice: item.predictedPrice, roundId: item.roundId ?? item.account, stakeUsdc: item.entryAmountUsdc, status: item.status, submittedAt: item.submittedAt }; }
+function periodCutoff(period: PnlPeriod) { const now = new Date(); if (period === "day") return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1_000; return Math.floor(now.getTime() / 1_000) - (period === "week" ? 7 : 30) * 86_400; }
+function pnlTone(value: number) { return value > 0 ? "text-chart-3" : value < 0 ? "text-destructive" : "text-muted-foreground"; }
+function signedUsdc(value: number) { return `${value > 0 ? "+" : value < 0 ? "−" : ""}${usdc.format(Math.abs(value))} USDC`; }
+const tradeDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 function AccountSkeleton() { return <div aria-label="Loading account" className="animate-pulse space-y-4"><div className="h-36 border bg-card" /><div className="grid gap-4 lg:grid-cols-[1fr_20rem]"><div className="h-96 border bg-card" /><div className="h-80 border bg-card" /></div></div>; }
