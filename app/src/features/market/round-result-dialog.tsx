@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
+import { savePortfolioTrade } from "@/features/account/portfolio-ledger";
 
-type RoundResult = { actualPrice: number | null; claimed: boolean; entryAmountUsdc: number; error: number | null; payoutUsdc: number; predictedPrice: number; roundId: string; status: string };
+type RoundResult = { actualPrice: number | null; claimed: boolean; entryAmountUsdc: number; error: number | null; payoutUsdc: number; predictedPrice: number; roundId: string; status: string; submittedAt: number };
 const usd = new Intl.NumberFormat("en-US", { currency: "USD", style: "currency", minimumFractionDigits: 2 });
 const usdc = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 
@@ -40,8 +41,18 @@ export function RoundResultDialog({ roundId }: { roundId: string | null }) {
   }, [auth.address, auth.authenticated, getAccessToken, roundId]);
 
   useEffect(() => {
-    if (result && !dialog.current?.open) dialog.current?.showModal();
-  }, [result]);
+    if (!result || !auth.address) return;
+    savePortfolioTrade(auth.address, {
+      actualPrice: result.actualPrice,
+      payoutUsdc: result.status === "cancelled" ? result.entryAmountUsdc : result.payoutUsdc,
+      predictedPrice: result.predictedPrice,
+      roundId: result.roundId,
+      stakeUsdc: result.entryAmountUsdc,
+      status: result.status,
+      submittedAt: result.submittedAt,
+    });
+    if (!dialog.current?.open) dialog.current?.showModal();
+  }, [auth.address, result]);
 
   if (!result || !roundId || !auth.address) return null;
   const net = result.payoutUsdc - result.entryAmountUsdc;

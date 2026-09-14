@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { usePulseCastAuth } from "@/features/auth/auth-context";
+import { savePortfolioTrade } from "@/features/account/portfolio-ledger";
 import { useSponsoredEntry } from "@/features/prediction/use-sponsored-entry";
 import { savePredictionMarker } from "./prediction-marker";
 
@@ -41,6 +42,15 @@ export function ForecastTicket({ initialPrice, roundId, stakeUsdc, watching }: {
       const predictedPrice = BigInt(Math.round(Number(forecast) * 100_000_000)).toString();
       const nextSignature = await enterMarket(roundId, auth.address, predictedPrice, setState);
       savePredictionMarker({ price: Number(forecast), roundId, wallet: auth.address });
+      savePortfolioTrade(auth.address, {
+        actualPrice: null,
+        payoutUsdc: null,
+        predictedPrice: Number(forecast),
+        roundId,
+        stakeUsdc,
+        status: "betting",
+        submittedAt: Math.floor(Date.now() / 1_000),
+      });
       setSignature(nextSignature);
       setState("confirmed");
       router.refresh();
