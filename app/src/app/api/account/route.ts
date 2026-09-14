@@ -5,6 +5,7 @@ import bs58 from "bs58";
 import { NextResponse } from "next/server";
 
 import { ApiAuthError, verifyPrivyWalletRequest } from "@/server/privy-auth";
+import { loadWalletTradeHistory } from "@/server/wallet-trade-history";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
     const owner = new PublicKey(wallet);
     const connection = new Connection(process.env.SOLANA_RPC_URL ?? "https://api.devnet.solana.com", "confirmed");
     const tokenAddress = getAssociatedTokenAddressSync(DEVNET_USDC_MINT, owner);
-    const [balanceResult, accounts] = await Promise.all([
+    const [balanceResult, accounts, tradeHistory] = await Promise.all([
       connection.getTokenAccountBalance(tokenAddress, "confirmed").catch(() => null),
       connection.getProgramAccounts(PULSECAST_PROGRAM_ID, {
         commitment: "confirmed",
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
           { memcmp: { offset: 40, bytes: owner.toBase58() } },
         ],
       }),
+      loadWalletTradeHistory(connection, owner).catch(() => []),
     ]);
     const decoded = accounts.map(({ account, pubkey }) => ({ address: pubkey, prediction: decodePredictionAccount(account.data) }));
     const roundAccounts = await connection.getMultipleAccountsInfo(decoded.map(({ prediction }) => prediction.round), "confirmed");
@@ -46,7 +48,7 @@ export async function GET(request: Request) {
         submittedAt: Number(prediction.submittedAt),
       };
     }).sort((a, b) => b.submittedAt - a.submittedAt);
-    return NextResponse.json({ balanceUsdc: Number(balanceResult?.value.amount ?? 0) / 1_000_000, tokenAccount: tokenAddress.toBase58(), wallet, predictions });
+    return NextResponse.json({ balanceUsdc: Number(balanceResult?.value.amount ?? 0) / 1_000_000, tokenAccount: tokenAddress.toBase58(), tradeHistory, wallet, predictions });
   } catch (error) {
     if (error instanceof ApiAuthError) return NextResponse.json({ message: error.message }, { status: error.status });
     console.error("Failed to load account", error instanceof Error ? error.message : "unknown error");
