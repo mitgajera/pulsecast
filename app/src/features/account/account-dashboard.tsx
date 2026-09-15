@@ -22,6 +22,16 @@ const shortAddress = (value: string) => `${value.slice(0, 4)}...${value.slice(-4
 
 export function AccountDashboard() {
   const auth = usePulseCastAuth();
+
+  if (!auth.configured) {
+    return <section className="mx-auto max-w-lg border bg-card p-6 sm:p-8"><p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">Account</p><h1 className="mt-2 text-2xl font-semibold">Account is unavailable</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">Set NEXT_PUBLIC_PRIVY_APP_ID to enable wallet sign-in and portfolio data.</p></section>;
+  }
+
+  return <ConfiguredAccountDashboard />;
+}
+
+function ConfiguredAccountDashboard() {
+  const auth = usePulseCastAuth();
   const { getAccessToken } = usePrivy();
   const { submit } = useAccountOperation();
   const [data, setData] = useState<AccountData | null>(null);
