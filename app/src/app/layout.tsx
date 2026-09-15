@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 import { PulseCastAuthProvider } from "@/features/auth/auth-context";
@@ -38,6 +39,7 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased">
         <PulseCastAuthProvider appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID}>{children}</PulseCastAuthProvider>
+        <Analytics />
       </body>
     </html>
   );
